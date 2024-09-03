@@ -1,0 +1,19 @@
+---
+title: "Take home exercise 1"
+author: "yang yayong"
+date: "Sep 2 2024"
+date-modified: "last-modified"
+execute:
+  eval: true
+  echo: true
+  message: false
+  freeze: true
+---
+
+
+#rdacc_sf <- read_csv("ThE01data/thai_road_accident_2019_2022.csv") %>%
+#filter(!is.na(longitude) & longitude != "" & !is.na(latitude) & latitude != "") %>%
+#st_as_sf(coords = c("longitude", "latitude"),
+#crs=4326) %>%
+#st_transform(crs = 32647)
+

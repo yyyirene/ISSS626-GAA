@@ -1,0 +1,73 @@
+---
+title: "In-class_Ex02"
+author: "yang yayong"
+date: "Sep 2 2024"
+date-modified: "last-modified"
+execute:
+  eval: true
+  echo: true
+  message: false
+  freeze: true
+---
+
+```{r}
+#| eval: false
+install.packages("maptools", 
+                 repos = "https://packagemanager.posit.co/cran/2023-09-13")
+
+```
+
+```{r}
+#| eval: false
+pacman::p_load(tidyverse,sf,tmap,ggstatsplot)
+```
+
+```{r}
+sg_sf <- mpsz_sf %>%
+    st_union()
+```
+
+```{r}
+par(bg = "#E4D5C9")
+
+gridded_kde_childcareSG_ad <- maptools::as.SpatialGridDataFrame.im(
+  kde_childcareSG_adaptive
+)
+
+spplot(gridded_kde_childcareSG_ad)
+
+```
+
+```{r}
+
+# Spatstat.geom method
+gridded_kde_childcareSG_ad <- as(
+  kde_childcareSG_adaptive, 
+  "SpatialGridDataFrame"
+)
+
+spplot(gridded_kde_childcareSG_ad)
+```
+
+```{r}
+#| eval: false
+set.seed(1234)
+```
+
+Make sure the result is constant.
+
+```{r}
+
+pacman::p_load(tidyverse,sf,tmap,ggstatsplot)
+```
+
+```{r}
+
+rdacc_sf <- read_csv("data/thai_road_accident_2019_2022.csv") %>%
+  filter(!is.na(longitude) & longitude != "" & !is.na(latitude) & latitude != "") %>%
+  st_as_sf(coords = c("longitude", "latitude"),
+           crs=4326) %>%
+  st_transform(crs = 32647)
+
+
+```

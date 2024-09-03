@@ -1,0 +1,15 @@
+{
+  "hash": "aeae3a42e77041764cb707e207c3537f",
+  "result": {
+    "engine": "knitr",
+    "markdown": "---\ntitle: \"In-class_Ex02\"\nauthor: \"yang yayong\"\ndate: \"Sep 2 2024\"\ndate-modified: \"last-modified\"\nexecute:\n  eval: true\n  echo: true\n  message: false\n  freeze: true\n---\n\n::: {.cell}\n\n```{.r .cell-code}\ninstall.packages(\"maptools\",repos = \"https://packagemanager.posit.co/cran/2023-10-13\")\n```\n:::\n\n::: {.cell}\n\n```{.r .cell-code}\npacman::p_load(tidyverse,sf,tmap,ggstatsplot)\n```\n:::\n\n::: {.cell}\n\n```{.r .cell-code}\nsg_sf <- mpsz_sf %>%\n    st_union()\n```\n:::\n\n::: {.cell}\n\n```{.r .cell-code}\npar(bg = \"#E4D5C9\")\n# Maptools method\ngridded_kde_childcareSG_ad <- maptools::as.SpatialGridDataFrame.im(\n  kde_childcareSG_adaptive\n)\n\nspplot(gridded_kde_childcareSG_ad)\n```\n:::\n\n::: {.cell}\n\n```{.r .cell-code}\n# Spatstat.geom method\ngridded_kde_childcareSG_ad <- as(\n  kde_childcareSG_adaptive, \n  \"SpatialGridDataFrame\"\n)\n\nspplot(gridded_kde_childcareSG_ad)\n```\n:::\n\n::: {.cell}\n\n```{.r .cell-code}\nset.seed(1234)\n```\n:::\n\n\nMake sure the result is constant.\n\n\n::: {.cell}\n\n```{.r .cell-code}\npacman::p_load(tidyverse,sf,tmap,ggstatsplot)\n```\n:::\n\n::: {.cell}\n\n```{.r .cell-code}\nrdacc_sf <- read_csv(\"data/thai_road_accident_2019_2022.csv\") %>%\n  filter(!is.na(longitude) & longitude != \"\" & !is.na(latitude) & latitude != \"\") %>%\n  st_as_sf(coords = c(\"longitude\", \"latitude\"),\n           crs=4326) %>%\n  st_transform(crs = 32647)\n```\n:::\n",
+    "supporting": [],
+    "filters": [
+      "rmarkdown/pagebreak.lua"
+    ],
+    "includes": {},
+    "engineDependencies": {},
+    "preserve": {},
+    "postProcess": true
+  }
+}
