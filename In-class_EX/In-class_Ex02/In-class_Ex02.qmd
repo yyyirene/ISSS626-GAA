@@ -18,8 +18,7 @@ install.packages("maptools",
 ```
 
 ```{r}
-#| eval: false
-pacman::p_load(tidyverse,sf,tmap,ggstatsplot)
+pacman::p_load(tidyverse,sf,tmap,ggstatsplot,maptools)
 ```
 
 ```{r}
