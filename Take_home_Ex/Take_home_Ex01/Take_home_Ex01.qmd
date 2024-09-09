@@ -49,28 +49,30 @@ rdacc_sf <- read_csv("data/rawdata/thai_road_accident_2019_2022.csv") %>%
 ```
 
 ```{r}
-#| eval: false
-acc <- read_csv("data/rawdata/thai_road_accident_2019_2022.csv") %>%
-  mutate(Month_num = month(incident_datetime)) %>%
-  mutate(month_fac = month(incident_datetime,
-                       label = TRUE,
-                       abbr = TRUE)) %>%
-  mutate(dayofweek = day(incident_datetime))
-  filter(!is.na(longitude) & longitude != "", 
-         !is.na(latitude) & latitude != "") %>%
-  st_as_sf(coords = c(
-    "longitude", "latitude"),
-    crs=4326) %>%
-  st_transform(crs = 32647) 
+##| eval: false
+#acc <- read_csv("data/rawdata/thai_road_accident_2019_2022.csv") %>%
+ # mutate(Month_num = month(incident_datetime)) %>%
+  #mutate(month_fac = month(incident_datetime,
+                      # label = TRUE,
+                      # abbr = TRUE)) %>%
+  #mutate(dayofweek = day(incident_datetime))
+  #filter(!is.na(longitude) & longitude != "", 
+         #!is.na(latitude) & latitude != "") %>%
+  #st_as_sf(coords = c(
+    #"longitude", "latitude"),
+   # crs=4326) %>%
+ # st_transform(crs = 32647) 
   
 ```
 
 ```{r}
+#| eval: false
 write_rds(acc,"data/rds/acc.rds")
 ```
 #output saved it ，可以用这个来做后面的步骤
 
 ```{r}
+#| eval: false
 acc <- read_rds("data/rds/acc.rds")
 ```
 
@@ -78,27 +80,34 @@ acc <- read_rds("data/rds/acc.rds")
 这里要1.8.2 转变
 
 ```{r}
+#| eval: false
 glimpse(rdacc_sf)
 ```
 
 ```{r}
+#| eval: false
 road <- st_read(dsn = "data/rawdata", layer = "hotosm_tha_roads_lines_shp") 
 ```
 
 from the data infromation we can notice that it has no CRS so we need to transfrom
 
 ```{r}
+#| eval: false
 road <- st_set_crs(road, 4326)
 ```
 
 ```{r}
+#| eval: false
 glimpse(road)
 ```
 
 ```{r}
+#| eval: false
 st_crs(road)
 ```
+
 ```{r}
+#| eval: false
 # 假设 road 数据有列标识省份或区域，比如 province_en
 bmr_provinces <- c("Bangkok", "Nonthaburi", "Pathum Thani", "Samut Prakan", "Nakhon Pathom", "Samut Sakhon")
 road_bmr <- road %>% 
@@ -109,6 +118,7 @@ road_bmr <- road %>%
 
 
 ```{r}
+#| eval: false
 # 绘制曼谷都市区的道路
 plot(st_geometry(road_bmr), main = "Bangkok Metropolitan Region Road Network")
 
@@ -118,6 +128,7 @@ plot(st_geometry(road_bmr), main = "Bangkok Metropolitan Region Road Network")
 Importing the Singapore boundary data
 
 ```{r}
+#| eval: false
 # 导入第1级行政边界
 admin_level_1 <- st_read("data/rawdata/tha_admbnda_adm1_rtsd_20220121.shp")
 
@@ -129,12 +140,14 @@ admin_level_3 <- st_read("data/rawdata/tha_admbnda_adm3_rtsd_20220121.shp")
 ```
 
 ```{r}
+#| eval: false
 admin_level_1 <- st_set_crs(admin_level_1, 4326)
 admin_level_2 <- st_set_crs(admin_level_2, 4326)
 admin_level_3 <- st_set_crs(admin_level_3, 4326)
 ```
 
 ```{r}
+#| eval: false
 ggplot() +
   geom_sf(data = admin_level_1, fill = NA, color = "red") +   # 第1级边界
   geom_sf(data = admin_level_2, fill = NA, color = "blue") +  # 第2级边界
@@ -144,12 +157,14 @@ ggplot() +
 ```
 
 ```{r}
+#| eval: false
 bangkok_map <- admin_level_1 %>%
   filter(ADM1_EN %in% c("Bangkok", "Nonthaburi", "Pathum Thani", "Samut Prakan", "Nakhon Pathom", "Samut Sakhon"))
 
 ```
 
 ```{r}
+#| eval: false
 #ggplot() +
   #geom_sf(data = bangkok_map, fill = "lightblue", color = "black") +
   #theme_minimal() +
@@ -179,6 +194,7 @@ ggplot() +
 ```
 
 ```{r}
+#| eval: false
 plot(bangkok_map)
 ```
 
@@ -201,6 +217,7 @@ Southwest of Bangkok, Samut Sakhon is an important industrial center, particular
 Spatial Point Patterns Analysis Methods
 
 ```{r}
+#| eval: false
 # 绘制道路网络
 plot(st_geometry(bangkok_map), col = "grey", main = "Road Network with Accidents")
 
