@@ -10,10 +10,162 @@ execute:
   freeze: true
 ---
 
+## **Geospatial Analytics for Social Good: Thailand Road Accident Case Study**
 
-#rdacc_sf <- read_csv("ThE01data/thai_road_accident_2019_2022.csv") %>%
-#filter(!is.na(longitude) & longitude != "" & !is.na(latitude) & latitude != "") %>%
-#st_as_sf(coords = c("longitude", "latitude"),
-#crs=4326) %>%
-#st_transform(crs = 32647)
+overview
+According to the World Health Organization (WHO), road traffic accidents cause approximately 1.19 million deaths annually, with 20-50 million non-fatal injuries. Vulnerable road users, such as pedestrians, cyclists, and motorcyclists, make up more than half of all deaths. Road traffic injuries are the leading cause of death for children and young adults aged 5–29, with two-thirds of fatalities occurring among working-age individuals (18–59 years). Low- and middle-income countries, which own 60% of the world’s vehicles, account for 90% of road fatalities. Road accidents also impose significant economic burdens, costing countries 3% of their annual GDP.
+
+Thailand has the highest road death rate in Southeast Asia, with around 20,000 deaths annually. From 2014 to 2021, 19% of accidents occurred on national highways, and there was a 66% chance of encountering accident-prone zones ("black spots"), with 66% on straight roads, 13% at curves, and smaller percentages at intersections, bridges, and slopes.
+
+Objectives
+
+In this study, I will demonstrate how to apply Spatial Point Patterns Analysis (SPPA) and spatio-temporal visualization techniques to uncover the factors influencing road traffic accidents in the Bangkok Metropolitan Region (BMR). By employing appropriate statistical and geospatial methods, I aim to provide a detailed analysis of both spatial and spatio-temporal patterns of accidents, offering insights into the impact of behavioral, environmental, and temporal factors. Recommendations for improving road safety in BMR will also be proposed based on the findings.
+
+## **The Data**
+
+For the purpose of this exercise, three basic data sets are needed, they are:
+
+-   [Thailand Road Accident \[2019-2022\]](https://www.kaggle.com/datasets/thaweewatboy/thailand-road-accident-2019-2022) on Kaggle
+
+-   [Thailand Roads (OpenStreetMap Export)](https://data.humdata.org/dataset/hotosm_tha_roads) on HDX.
+
+-   [Thailand - Subnational Administrative Boundaries](https://data.humdata.org/dataset/cod-ab-tha?) on HDX.
+
+```{r}
+pacman::p_load(sf, tmap, tidyverse,ggplot2,dplyr)
+```
+
+Importing the Geospatial aspatial "Traffic Accident Data"
+```{r}
+rdacc_sf <- read_csv("data/thai_road_accident_2019_2022.csv") %>%
+  filter(!is.na(longitude) & longitude != "", 
+         !is.na(latitude) & latitude != "") %>%
+  st_as_sf(coords = c(
+    "longitude", "latitude"),
+    crs=4326) %>%
+  st_transform(crs = 32647) 
+```
+
+```{r}
+glimpse(rdacc_sf)
+```
+
+```{r}
+road <- st_read(dsn = "data", layer = "hotosm_tha_roads_lines_shp") 
+```
+from the data infromation we can notice that it has no CRS so we need to transfrom
+```{r}
+road <- st_set_crs(road, 4326)
+```
+
+```{r}
+glimpse(road)
+```
+```{r}
+st_crs(road)
+```
+
+Importing the Singapore boundary data
+
+```{r}
+# 导入第1级行政边界
+admin_level_1 <- st_read("data/tha_admbnda_adm1_rtsd_20220121.shp")
+
+# 导入第2级行政边界
+admin_level_2 <- st_read("data/tha_admbnda_adm2_rtsd_20220121.shp")
+
+# 导入第3级行政边界
+admin_level_3 <- st_read("data/tha_admbnda_adm3_rtsd_20220121.shp")
+```
+```{r}
+admin_level_1 <- st_set_crs(admin_level_1, 4326)
+admin_level_2 <- st_set_crs(admin_level_2, 4326)
+admin_level_3 <- st_set_crs(admin_level_3, 4326)
+```
+
+
+```{r}
+ggplot() +
+  geom_sf(data = admin_level_1, fill = NA, color = "red") +   # 第1级边界
+  geom_sf(data = admin_level_2, fill = NA, color = "blue") +  # 第2级边界
+  #geom_sf(data = admin_level_3, fill = NA, color = "green") + # 第3级边界
+  theme_minimal() +
+  labs(title = "Thailand Administrative Boundaries")
+```
+
+
+
+
+```{r}
+bangkok_map <- admin_level_1 %>%
+  filter(ADM1_EN %in% c("Bangkok", "Nonthaburi", "Pathum Thani", "Samut Prakan", "Nakhon Pathom", "Samut Sakhon"))
+
+```
+
+```{r}
+#ggplot() +
+  #geom_sf(data = bangkok_map, fill = "lightblue", color = "black") +
+  #theme_minimal() +
+  #labs(title = "Bangkok Administrative Boundaries")
+
+
+#ggplot() +
+  #geom_sf(data = bangkok_map, fill = "grey", color = "black") +
+  #geom_sf_text(aes(label = ADM1_EN), size = 3, color = "black") +
+  #theme_minimal() +
+  #labs(title = "Bangkok Metropolitan Region")
+
+
+#ggplot() +
+  #geom_sf(data = bangkok_map, fill = "grey", color = "black") +  # 绘制地图
+  #geom_sf_text(data = bangkok_map, aes(label = ADM1_EN), size = 3, color = "black") +  # 添加省份名称标签
+ # theme_minimal() +
+  #labs(title = "Bangkok Metropolitan Region")
+
+ggplot() +
+  geom_sf(data = bangkok_map, aes(fill = ifelse(ADM1_EN == "Bangkok", "Bangkok", "Other")), color = "black") +  # 设置不同的填充颜色
+  #geom_sf_text(data = bangkok_map, aes(label = ADM1_EN), size = 3, color = "black") +  # 添加省份名称标签
+  scale_fill_manual(values = c("Bangkok" = "yellow", "Other" = "grey")) +  # 设置曼谷为黄色，其他为灰色
+  theme_minimal() +
+  labs(title = "Bangkok Metropolitan Region", fill = "Region")  # 添加图例标题
+
+```
+
+
+
+
+```{r}
+plot(bangkok_map)
+```
+
+
+
+
+Bangkok Metropolitan Region (BMR) is the main urban conglomeration of Thailand, consisting of the following six areas. BMR is Thailand's most important economic, cultural, and political center, concentrating the highest population and business activities in the country.
+
+Bangkok:
+
+The capital of Thailand and the core city of BMR, with the densest population and most developed economy. Bangkok is a major hub for international business and tourism, featuring modern infrastructure and rich cultural heritage.
+Nonthaburi:
+
+Located to the north of Bangkok, Nonthaburi is Thailand's second-largest city. It features many residential and commercial areas and serves as one of Bangkok’s main satellite cities. Nonthaburi has seen rapid development due to urbanization.
+Pathum Thani:
+
+Also situated to the north of Bangkok, Pathum Thani is a rapidly growing area known for its industrial and technological parks, attracting significant investment. The region's tech companies and universities further drive its expansion.
+Samut Prakan:
+
+Located south of Bangkok near the Gulf of Thailand, Samut Prakan is home to one of Thailand’s largest airports, Suvarnabhumi International Airport. The area is known for its industrial zones and ports, serving as an important logistics hub for the country.
+Nakhon Pathom:
+
+West of Bangkok, Nakhon Pathom is known for its rich history and culture. Primarily an agricultural region, it has seen rapid urbanization in recent years, attracting increasing numbers of investors and residents.
+Samut Sakhon:
+
+Southwest of Bangkok, Samut Sakhon is an important industrial center, particularly known for seafood processing and exports. Its coastal location makes it a key base for Thailand's maritime industries.
+
+
+
+
+
+
+
 
