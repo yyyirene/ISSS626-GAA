@@ -118,6 +118,8 @@ Before computing NKDE, the SpatialLines object need to be cut into lixels with a
 lixels <- lixelize_lines(network, 
                          700, 
                          mindist = 375)
+
+#700是已经research过的，最适距离，为什么要计算
 ```
 
 ### **7.6.2 Generating line centre points**
@@ -127,6 +129,13 @@ Next, *lines_center()* of **spNetwork** will be used to generate a SpatialPo
 ```{r}
 samples <- lines_center(lixels) 
 ```
+
+```{r}
+
+```
+
+
+
 
 ### **7.6.3 Performing NKDE**
 
@@ -158,6 +167,8 @@ Before we can visualise the NKDE values, code chunk below will be used to insert
 samples$density <- densities
 lixels$density <- densities
 ```
+
+不可做sorting
 
 Since svy21 projection system is in meter, the computed density values are very small i.e. 0.0000005. The code chunk below is used to resale the density values from number of events per meter to number of events per kilometer.
 
@@ -198,7 +209,7 @@ kfun_childcare <- kfunctions(network,
                              end = 1000, 
                              step = 50, 
                              width = 50, 
-                             nsim = 50, 
+                             nsim = 50, #49
                              resolution = 50,
                              verbose = FALSE, 
                              conf_int = 0.05)
@@ -208,6 +219,7 @@ kfun_childcare <- kfunctions(network,
 
 kfun_childcare$plotk
 
+#kfun_childcare$plotg
 ```
 
 The blue line is the empirical network K-function of the childcare centres in Punggol planning area. The gray envelop represents the results of the 50 simulations in the interval 2.5% - 97.5%. Because the blue line between the distance of 250m-400m are below the gray area, we can infer that the childcare centres in Punggol planning area resemble regular pattern at the distance of 250m-400m.

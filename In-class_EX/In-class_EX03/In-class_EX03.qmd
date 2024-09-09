@@ -1,0 +1,49 @@
+---
+title: "In-class exercise 3"
+author: "yang yayong"
+date: "Sep 9 2024"
+date-modified: "last-modified"
+execute:
+  eval: true
+  echo: true
+  message: false
+  freeze: true
+---
+
+```{r}
+pacman::p_load(sf, spNetwork, tmap, tidyverse)
+
+```
+
+```{r}
+childcare2 <- st_read(dsn="data/rowdata", layer="Punggol_CC") %>%
+  st_zm(drop = TRUE,
+        what = "ZM")
+```
+```{r}
+#| eval: false
+plot(network)
+plot(childcare,add=T,col='red',pch = 19)
+
+```
+
+which mean x,y  
+
+Network: This object is typically a geographic spatial dataset that may contain geometric and attribute data for roads or other network structures.
+
+St_geometry (network): This function extracts geometric data (such as coordinate points, lines, or polygons) from the network object for drawing or performing spatial operations.
+
+```{r}
+#| eval: false
+tmap_mode('plot')  # view is interactive
+
+tm_shape(childcare) +
+
+ tm_dots(col = "red") +  #keep the size constant for zoom in and zoom out
+
+ tm_shape(network) +
+
+ tm_lines()
+tmap_mode("plot")
+```
+

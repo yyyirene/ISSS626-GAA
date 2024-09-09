@@ -1,0 +1,15 @@
+{
+  "hash": "dfe3dd79bd8fa835b061da67a7d57a72",
+  "result": {
+    "engine": "knitr",
+    "markdown": "---\ntitle: \"In-class exercise 3\"\nauthor: \"yang yayong\"\ndate: \"Sep 9 2024\"\ndate-modified: \"last-modified\"\nexecute:\n  eval: true\n  echo: true\n  message: false\n  freeze: true\n---\n\n::: {.cell}\n\n```{.r .cell-code}\npacman::p_load(sf, spNetwork, tmap, tidyverse)\n```\n:::\n\n::: {.cell}\n\n```{.r .cell-code}\nchildcare2 <- st_read(dsn=\"data/rowdata\", layer=\"Punggol_CC\") %>%\n  st_zm(drop = TRUE,\n        what = \"ZM\")\n```\n\n::: {.cell-output .cell-output-stdout}\n\n```\nReading layer `Punggol_CC' from data source \n  `/Users/yangyayong/Downloads/学校文件/smu文件/Term 3/G/yyyirene/ISSS626-GAA/In-class_EX/In-class_EX03/data/rowdata' \n  using driver `ESRI Shapefile'\nSimple feature collection with 61 features and 1 field\nGeometry type: POINT\nDimension:     XYZ\nBounding box:  xmin: 34423.98 ymin: 41503.6 xmax: 37619.47 ymax: 44685.77\nz_range:       zmin: 0 zmax: 0\nProjected CRS: SVY21 / Singapore TM\n```\n\n\n:::\n:::\n\n::: {.cell}\n\n```{.r .cell-code}\nplot(network)\nplot(childcare,add=T,col='red',pch = 19)\n```\n:::\n\n\nwhich mean x,y  \n\nNetwork: This object is typically a geographic spatial dataset that may contain geometric and attribute data for roads or other network structures.\n\nSt_geometry (network): This function extracts geometric data (such as coordinate points, lines, or polygons) from the network object for drawing or performing spatial operations.\n\n\n::: {.cell}\n\n```{.r .cell-code}\ntmap_mode('plot')  # view is interactive\n\ntm_shape(childcare) +\n\n tm_dots(col = \"red\") +  #keep the size constant for zoom in and zoom out\n\n tm_shape(network) +\n\n tm_lines()\ntmap_mode(\"plot\")\n```\n:::\n",
+    "supporting": [],
+    "filters": [
+      "rmarkdown/pagebreak.lua"
+    ],
+    "includes": {},
+    "engineDependencies": {},
+    "preserve": {},
+    "postProcess": true
+  }
+}
