@@ -134,9 +134,6 @@ samples <- lines_center(lixels)
 
 ```
 
-
-
-
 ### **7.6.3 Performing NKDE**
 
 ```{r}
