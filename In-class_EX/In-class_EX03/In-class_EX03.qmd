@@ -16,18 +16,18 @@ pacman::p_load(sf, spNetwork, tmap, tidyverse)
 ```
 
 ```{r}
-childcare2 <- st_read(dsn="data/rowdata", layer="Punggol_CC") %>%
+childcare2 <- st_read(dsn="data/rawdata", layer="Punggol_CC") %>%
   st_zm(drop = TRUE,
         what = "ZM")
 ```
 ```{r}
-network <- st_read(dsn="data/rowdata", 
+network <- st_read(dsn="data/rawdata", 
                    layer="Punggol_St")
 ```
 
 ```{r}
 plot(network)
-plot(childcare,add=T,col='red',pch = 19)
+plot(childcare2,add=T,col='red',pch = 19)
 
 ```
 
@@ -41,7 +41,7 @@ St_geometry (network): This function extracts geometric data (such as coordinate
 
 tmap_mode('plot')  # view is interactive
 
-tm_shape(childcare) +
+tm_shape(childcare2) +
 
  tm_dots(col = "red") +  #keep the size constant for zoom in and zoom out
 
@@ -91,6 +91,7 @@ acc <- read_csv("data/rawdata/thai_road_accident_2019_2022.csv") %>%
   st_transform(crs = 32647)
 
 ```
+
 ```{r}
 write_rds(acc,"data/rds/acc.rds")
 ```

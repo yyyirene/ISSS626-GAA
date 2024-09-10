@@ -37,7 +37,7 @@ pacman::p_load(sf, tmap, tidyverse,ggplot2,spNetwork,dplyr)
 Importing the Geospatial aspatial "Traffic Accident Data"
 
 ```{r}
-#| eval: false
+
 rdacc_sf <- read_csv("data/rawdata/thai_road_accident_2019_2022.csv") %>%
   filter(!is.na(longitude) & longitude != "", 
          !is.na(latitude) & latitude != "") %>%
