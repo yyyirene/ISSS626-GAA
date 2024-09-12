@@ -24,111 +24,160 @@ In this study, I will demonstrate how to apply Spatial Point Patterns Analysis (
 
 For the purpose of this exercise, three basic data sets are needed, they are:
 
--   [Thailand Road Accident \[2019-2022\]](https://www.kaggle.com/datasets/thaweewatboy/thailand-road-accident-2019-2022) on Kaggle
+-   [Thailand Road Accident \[2019-2022\]](https://www.kaggle.com/datasets/thaweewatboy/thailand-road-accident-2019-2022) on Kaggle,a point feature layer in CSV format：
+The dataset contains point features representing road accidents in Thailand from 2019 to 2022. Each feature represents a unique accident event, with spatial attributes (latitude and longitude) and other associated accident data, such as the date, time, severity, and road type.
 
--   [Thailand Roads (OpenStreetMap Export)](https://data.humdata.org/dataset/hotosm_tha_roads) on HDX.
+-   [Thailand Roads (OpenStreetMap Export)](https://data.humdata.org/dataset/hotosm_tha_roads) on HDX,a line feature layer in ESRI Shapefile format：
+The dataset contains line features representing the road network of Thailand. Each feature represents a section of a road, with spatial attributes and additional road-related information.
 
--   [Thailand - Subnational Administrative  Boundaries](https://data.humdata.org/dataset/cod-ab-tha?) on HDX.
+-   [Thailand - Subnational Administrative  Boundaries](https://data.humdata.org/dataset/cod-ab-tha?) on HDX,a polygon feature layer in ESRI Shapefile format.
 
 ```{r}
-pacman::p_load(sf, tmap, tidyverse,ggplot2,spNetwork,dplyr)
+pacman::p_load(sf, raster, spatstat, tmap, tidyverse)
 ```
 
-Importing the Geospatial aspatial "Traffic Accident Data"
+Importing the aspatial "Traffic Accident Data"
+
+1.Importing & Converting an Aspatial Data
 
 ```{r}
+selected_provinces <- c("Bangkok", "Nonthaburi", "Pathum Thani", "Samut Prakan", "Nakhon Pathom", "Samut Sakhon")
+```
 
-rdacc_sf <- read_csv("data/rawdata/thai_road_accident_2019_2022.csv") %>%
+```{r}
+acci <- read_csv("data/rawdata/thai_road_accident_2019_2022.csv") %>%
+  mutate(Month_num = month(incident_datetime)) %>%
+  mutate(Month_fac = month(incident_datetime, label = TRUE, abbr = TRUE)) %>%
+  mutate(dayofweek = wday(incident_datetime, label = TRUE)) %>%  # 修改为 wday 获取星期
   filter(!is.na(longitude) & longitude != "", 
-         !is.na(latitude) & latitude != "") %>%
-  st_as_sf(coords = c(
-    "longitude", "latitude"),
-    crs=4326) %>%
-  st_transform(crs = 32647) 
+         !is.na(latitude) & latitude != "",
+         province_en %in% selected_provinces) %>%  # 过滤所需的省份
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>%
+  st_transform(crs = 32647)
 
 ```
 
-```{r}
-##| eval: false
-#acc <- read_csv("data/rawdata/thai_road_accident_2019_2022.csv") %>%
- # mutate(Month_num = month(incident_datetime)) %>%
-  #mutate(month_fac = month(incident_datetime,
-                      # label = TRUE,
-                      # abbr = TRUE)) %>%
-  #mutate(dayofweek = day(incident_datetime))
-  #filter(!is.na(longitude) & longitude != "", 
-         #!is.na(latitude) & latitude != "") %>%
-  #st_as_sf(coords = c(
-    #"longitude", "latitude"),
-   # crs=4326) %>%
- # st_transform(crs = 32647) 
-  
-```
 
 ```{r}
-#| eval: false
-write_rds(acc,"data/rds/acc.rds")
-```
-#output saved it ，可以用这个来做后面的步骤
+write_rds(acci,"data/rds/acci.rds")
 
-```{r}
-#| eval: false
-acc <- read_rds("data/rds/acc.rds")
+acci <- read_rds("data/rds/acci.rds")
 ```
 
 
-这里要1.8.2 转变
+```{r}
+glimpse(acci)
+```
+
+notice:
+Table above shows the content of acci, Notice that a new column called geometry has been added into the data frame. On the other hand, the longitude and latitude columns have been dropped from the data frame.
 
 ```{r}
-#| eval: false
-glimpse(rdacc_sf)
+tmap_mode('view')
+tm_shape(acci)+
+  tm_dots(col = 'red')
 ```
 
 ```{r}
-#| eval: false
+tmap_mode('plot')
+```
+
+Converting sf data frames to sp’s Spatial* class
+```{r}
+acci_s <- as_Spatial(acci)
+```
+
+
+```{r}
+acci_s
+```
+4.5.2 Converting the Spatial* class into generic sp format
+```{r}
+acci_sp <- as(acci_s, "SpatialPoints")
+```
+
+```{r}
+acci_sp
+```
+
+Converting the generic sp format into spatstat’s ppp format
+
+```{r}
+acci_ppp <- as.ppp(acci)
+acci_ppp
+```
+
+```{r}
+summary(acci_ppp)
+```
+```{r}
+any(duplicated(acci_ppp))
+```
+
+
+```{r}
+#kde_acci_bw <- density(acci_ppp,
+                              #sigma = bw.diggle,  # 使用 bw.diggle 选择带宽
+                              #edge = TRUE,        # 边界修正
+                              #kernel = "gaussian") # 使用高斯核进行平滑
+```
+
+```{r}
+plot(kde_acci_bw)
+```
+#要整合边界的数据
+
+1.Importing & Converting an Geospatial Data
+
+```{r}
 road <- st_read(dsn = "data/rawdata", layer = "hotosm_tha_roads_lines_shp") 
 ```
 
 from the data infromation we can notice that it has no CRS so we need to transfrom
 
 ```{r}
-#| eval: false
-road <- st_set_crs(road, 4326)
+road <- st_set_crs(road, 32647)
 ```
 
 ```{r}
-#| eval: false
+write_rds(road,"data/rds/road.rds")
+```
+
+```{r}
+road <- read_rds("data/rds/road.rds")
+```
+
+```{r}
 glimpse(road)
 ```
 
 ```{r}
-#| eval: false
 st_crs(road)
 ```
 
 ```{r}
-#| eval: false
-# 假设 road 数据有列标识省份或区域，比如 province_en
-bmr_provinces <- c("Bangkok", "Nonthaburi", "Pathum Thani", "Samut Prakan", "Nakhon Pathom", "Samut Sakhon")
-road_bmr <- road %>% 
-  filter(province_en %in% bmr_provinces)
+# 或者只查看唯一的 `highway` 类型
+unique(road$highway)
 ```
 
 
+```{r}
+#road_linestring <- st_cast(road, "LINESTRING")
+```
 
 
 ```{r}
-#| eval: false
-# 绘制曼谷都市区的道路
-plot(st_geometry(road_bmr), main = "Bangkok Metropolitan Region Road Network")
+# 将 MULTILINESTRING 分解为 LINESTRING
+#road_linestring <- st_cast(road, "LINESTRING")
 
+# 查看转换后的数据
+#plot(st_geometry(road_linestring))
 ```
 
 
 Importing the Singapore boundary data
 
 ```{r}
-#| eval: false
 # 导入第1级行政边界
 admin_level_1 <- st_read("data/rawdata/tha_admbnda_adm1_rtsd_20220121.shp")
 
@@ -140,11 +189,203 @@ admin_level_3 <- st_read("data/rawdata/tha_admbnda_adm3_rtsd_20220121.shp")
 ```
 
 ```{r}
-#| eval: false
-admin_level_1 <- st_set_crs(admin_level_1, 4326)
-admin_level_2 <- st_set_crs(admin_level_2, 4326)
-admin_level_3 <- st_set_crs(admin_level_3, 4326)
+admin_level_1 <- st_transform(admin_level_1, 32647)
+admin_level_2 <- st_transform(admin_level_2, 32647)
+admin_level_3 <- st_transform(admin_level_3, 32647)
 ```
+
+```{r}
+
+# 筛选第一级行政边界
+admin_level_1_filtered <- admin_level_1 %>%
+  filter(ADM1_EN %in% selected_provinces)
+
+# 筛选第二级行政边界
+admin_level_2_filtered <- admin_level_2 %>%
+  filter(ADM1_EN %in% selected_provinces)
+
+# 筛选第三级行政边界
+admin_level_3_filtered <- admin_level_3 %>%
+  filter(ADM1_EN %in% selected_provinces)
+```
+
+
+```{r}
+write_rds(admin_level_1_filtered,"data/rds/admin_level_1_filtered.rds")
+write_rds(admin_level_2_filtered,"data/rds/admin_level_2_filtered.rds")
+write_rds(admin_level_3_filtered,"data/rds/admin_level_3_filtered.rds")
+```
+
+```{r}
+admin_level_1_filtered <- read_rds("data/rds/admin_level_1_filtered.rds")
+admin_level_2_filtered <- read_rds("data/rds/admin_level_2_filtered.rds")
+admin_level_3_filtered <- read_rds("data/rds/admin_level_3_filtered.rds")
+```
+
+
+```{r}
+admin_level_2_filtered_owin <- as.owin(admin_level_2_filtered)
+admin_level_2_filtered_owin
+```
+
+```{r}
+class(admin_level_2_filtered_owin)
+```
+
+
+```{r}
+tm_shape(admin_level_2_filtered)+
+  tm_polygons() +
+tm_shape(acci) +
+  tm_dots()
+```
+
+```{r}
+tm_shape(admin_level_2_filtered)+
+  tm_polygons() +
+tm_shape(acci) +
+  tm_dots(size = 0.1) +
+tm_facets(by="Month_fac", 
+            free.coords=FALSE, 
+            drop.units = TRUE)
+```
+
+
+```{r}
+acci_month <- acci %>% 
+  select(Month_num)
+```
+
+```{r}
+acci_month_ppp <- as.ppp(acci_month)
+acci_month_ppp
+```
+
+```{r}
+summary(acci_month_ppp)
+```
+```{r}
+any(duplicated(acci_month_ppp))
+```
+
+```{r}
+acci_month_ppp_jit <- rjitter(acci_month_ppp, 
+                             retry=TRUE, 
+                             nsim=1, 
+                             drop=TRUE)
+```
+
+```{r}
+any(duplicated(acci_month_ppp_jit))
+```
+
+```{r}
+acci_month_owin <- acci_month_ppp[admin_level_2_filtered_owin]
+summary(acci_month_owin)
+```
+```{r}
+plot(acci_month_owin)
+``
+
+
+```{r}
+st_crs(admin_level_2_filtered)
+```
+
+```{r}
+st_kde <- spattemp.density(fire_month_owin)
+summary(st_kde)
+```
+
+
+
+
+```{r}
+plot(kde_acci_bw, main = "Accident Density with Boundary")  # 绘制核密度估计
+plot(st_geometry(admin_level_1_filtered), add = TRUE, border = "yellow", lwd = 1)
+
+```
+
+```{r}
+bw.CvL(acci_ppp.km)
+```
+```{r}
+bw.diggle(acci_ppp.km)
+```
+
+```{r}
+bw.scott(acci_ppp.km)
+```
+
+```{r}
+bw.ppl(acci_ppp.km)
+```
+
+
+```{r}
+plot(density(acci_ppp.km, 
+             sigma=bw.ppl, 
+             edge=TRUE, 
+             kernel="gaussian"), 
+     main="Gaussian")
+```
+
+```{r}
+plot(density(acci_ppp.km, 
+             sigma=bw.ppl, 
+             edge=TRUE, 
+             kernel="epanechnikov"), 
+     main="Epanechnikov")
+```
+
+```{r}
+plot(density(acci_ppp.km, 
+             sigma=bw.ppl, 
+             edge=TRUE, 
+             kernel="quartic"), 
+     main="Quartic")
+```
+
+
+```{r}
+plot(density(acci_ppp.km, 
+             sigma=bw.ppl, 
+             edge=TRUE, 
+             kernel="disc"), 
+     main="Disc") 
+```
+
+
+
+```{r}
+plot(st_geometry(road))
+plot(acci,add=T,col='red',pch = 19)
+
+```
+```{r}
+tmap_mode('view')
+tm_shape(acci) + 
+  tm_dots() + 
+  tm_shape(road) +
+  tm_lines()
+```
+
+
+
+
+```{r}
+# 使用边界数据（如Bangkok Metropolitan Region）与道路数据进行空间连接
+road_bmr <- st_join(road, admin_level_1_filtered)
+
+# 只保留与目标区域（如BMR）相交的道路
+road_bmr <- road_bmr[!is.na(road_bmr$ADM1_EN), ]  # ADM1_EN是省份的名称列
+
+# 绘制结果
+plot(st_geometry(road_bmr), col = "blue", main = "BMR")
+
+```
+
+
 
 ```{r}
 #| eval: false
@@ -156,15 +397,10 @@ ggplot() +
   labs(title = "Thailand Administrative Boundaries")
 ```
 
-```{r}
-#| eval: false
-bangkok_map <- admin_level_1 %>%
-  filter(ADM1_EN %in% c("Bangkok", "Nonthaburi", "Pathum Thani", "Samut Prakan", "Nakhon Pathom", "Samut Sakhon"))
 
-```
 
 ```{r}
-#| eval: false
+
 #ggplot() +
   #geom_sf(data = bangkok_map, fill = "lightblue", color = "black") +
   #theme_minimal() +
@@ -185,34 +421,36 @@ bangkok_map <- admin_level_1 %>%
   #labs(title = "Bangkok Metropolitan Region")
 
 ggplot() +
-  geom_sf(data = bangkok_map, aes(fill = ifelse(ADM1_EN == "Bangkok", "Bangkok", "Other")), color = "black") +  # 设置不同的填充颜色
-  #geom_sf_text(data = bangkok_map, aes(label = ADM1_EN), size = 3, color = "black") +  # 添加省份名称标签
+  geom_sf(data = admin_level_1_filtered, aes(fill = ifelse(ADM1_EN == "Bangkok", "Bangkok", "Other")), color = "black") +  # 设置不同的填充颜色
+  geom_sf_text(data = admin_level_1_filtered, aes(label = ADM1_EN), size = 3, color = "black") +  # 添加省份名称标签
   scale_fill_manual(values = c("Bangkok" = "yellow", "Other" = "grey")) +  # 设置曼谷为黄色，其他为灰色
   theme_minimal() +
   labs(title = "Bangkok Metropolitan Region", fill = "Region")  # 添加图例标题
 
 ```
 
+
+
 ```{r}
-#| eval: false
-plot(bangkok_map)
+plot(admin_level_1_filtered)
 ```
 
-Bangkok Metropolitan Region (BMR) is the main urban conglomeration of Thailand, consisting of the following six areas. BMR is Thailand's most important economic, cultural, and political center, concentrating the highest population and business activities in the country.
 
-Bangkok:
 
-The capital of Thailand and the core city of BMR, with the densest population and most developed economy. Bangkok is a major hub for international business and tourism, featuring modern infrastructure and rich cultural heritage. Nonthaburi:
 
-Located to the north of Bangkok, Nonthaburi is Thailand's second-largest city. It features many residential and commercial areas and serves as one of Bangkok’s main satellite cities. Nonthaburi has seen rapid development due to urbanization. Pathum Thani:
+```{r}
+#| eval: false
+bmr_road <- st_intersection(road, admin_level_1_filtered)
+```
 
-Also situated to the north of Bangkok, Pathum Thani is a rapidly growing area known for its industrial and technological parks, attracting significant investment. The region's tech companies and universities further drive its expansion. Samut Prakan:
 
-Located south of Bangkok near the Gulf of Thailand, Samut Prakan is home to one of Thailand’s largest airports, Suvarnabhumi International Airport. The area is known for its industrial zones and ports, serving as an important logistics hub for the country. Nakhon Pathom:
 
-West of Bangkok, Nakhon Pathom is known for its rich history and culture. Primarily an agricultural region, it has seen rapid urbanization in recent years, attracting increasing numbers of investors and residents. Samut Sakhon:
-
-Southwest of Bangkok, Samut Sakhon is an important industrial center, particularly known for seafood processing and exports. Its coastal location makes it a key base for Thailand's maritime industries.
+```{r}
+tm_shape(bmr_road) +
+  tm_lines() +
+  tm_shape(admin_level_1_filtered) +
+  tm_borders()
+```
 
 Spatial Point Patterns Analysis Methods
 

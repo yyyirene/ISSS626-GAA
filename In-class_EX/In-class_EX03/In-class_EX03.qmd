@@ -20,6 +20,7 @@ childcare2 <- st_read(dsn="data/rawdata", layer="Punggol_CC") %>%
   st_zm(drop = TRUE,
         what = "ZM")
 ```
+
 ```{r}
 network <- st_read(dsn="data/rawdata", 
                    layer="Punggol_St")
@@ -31,7 +32,7 @@ plot(childcare2,add=T,col='red',pch = 19)
 
 ```
 
-which mean x,y  
+which mean x,y
 
 Network: This object is typically a geographic spatial dataset that may contain geometric and attribute data for roads or other network structures.
 
@@ -79,7 +80,6 @@ kfun_childcare$plotk
 kfun_childcare$plotg
 ```
 
-
 ```{r}
 acc <- read_csv("data/rawdata/thai_road_accident_2019_2022.csv") %>%
   mutate(Month_num = month(incident_datetime)) %>%
@@ -99,4 +99,3 @@ write_rds(acc,"data/rds/acc.rds")
 ```{r}
 acc <- read_rds("data/rds/acc.rds")
 ```
-
