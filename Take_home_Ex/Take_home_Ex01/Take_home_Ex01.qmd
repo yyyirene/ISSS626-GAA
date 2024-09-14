@@ -33,7 +33,7 @@ The dataset contains line features representing the road network of Thailand. Ea
 -   [Thailand - Subnational Administrative  Boundaries](https://data.humdata.org/dataset/cod-ab-tha?) on HDX,a polygon feature layer in ESRI Shapefile format.
 
 ```{r}
-pacman::p_load(sf, raster, spatstat, tmap, tidyverse)
+pacman::p_load(sf, raster, spatstat,sparr,tmap, tidyverse)
 ```
 
 Importing the aspatial "Traffic Accident Data"
@@ -48,12 +48,14 @@ selected_provinces <- c("Bangkok", "Nonthaburi", "Pathum Thani", "Samut Prakan",
 acci <- read_csv("data/rawdata/thai_road_accident_2019_2022.csv") %>%
   mutate(Month_num = month(incident_datetime)) %>%
   mutate(Month_fac = month(incident_datetime, label = TRUE, abbr = TRUE)) %>%
-  mutate(dayofweek = wday(incident_datetime, label = TRUE)) %>%  # 修改为 wday 获取星期
+  mutate(dayofweek = wday(incident_datetime, label = TRUE)) %>%
+  mutate(dayofyear = yday(incident_datetime)) %>%  # 修正闭合括号
+  mutate(hour = hour(incident_datetime)) %>%  # 提取小时
   filter(!is.na(longitude) & longitude != "", 
          !is.na(latitude) & latitude != "",
          province_en %in% selected_provinces) %>%  # 过滤所需的省份
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>%
-  st_transform(crs = 32647)
+  st_transform(crs = 32647)  # 转换为所需的投影
 
 ```
 
@@ -114,17 +116,6 @@ summary(acci_ppp)
 any(duplicated(acci_ppp))
 ```
 
-
-```{r}
-#kde_acci_bw <- density(acci_ppp,
-                              #sigma = bw.diggle,  # 使用 bw.diggle 选择带宽
-                              #edge = TRUE,        # 边界修正
-                              #kernel = "gaussian") # 使用高斯核进行平滑
-```
-
-```{r}
-plot(kde_acci_bw)
-```
 #要整合边界的数据
 
 1.Importing & Converting an Geospatial Data
@@ -285,90 +276,93 @@ summary(acci_month_owin)
 ```
 ```{r}
 plot(acci_month_owin)
-``
-
+```
 
 ```{r}
 st_crs(admin_level_2_filtered)
 ```
 
 ```{r}
-st_kde <- spattemp.density(fire_month_owin)
+library()
+st_kde <- spattemp.density(acci_month_owin)
 summary(st_kde)
 ```
 
-
-
-
 ```{r}
-plot(kde_acci_bw, main = "Accident Density with Boundary")  # 绘制核密度估计
-plot(st_geometry(admin_level_1_filtered), add = TRUE, border = "yellow", lwd = 1)
-
+tims <- c(1,2,3,4,5,6,7,8,9,10,11,12)
+par(mfcol=c(2,3))
+for(i in tims){ 
+  plot(st_kde, i, 
+       override.par=FALSE, 
+       fix.range=TRUE, 
+       main=paste("KDE at month",i))
+}
 ```
 
 ```{r}
-bw.CvL(acci_ppp.km)
-```
-```{r}
-bw.diggle(acci_ppp.km)
-```
+# 假设 tims 代表一周的天数（星期一到星期日，1代表星期日，7代表星期六）
+tims <- c(1, 2, 3, 4, 5, 6, 7)  # 表示一周7天
 
-```{r}
-bw.scott(acci_ppp.km)
-```
+# 调整图形布局
+par(mfcol=c(2, 4))  # 设置为2行4列布局来展示每一天的KDE
 
-```{r}
-bw.ppl(acci_ppp.km)
-```
-
-
-```{r}
-plot(density(acci_ppp.km, 
-             sigma=bw.ppl, 
-             edge=TRUE, 
-             kernel="gaussian"), 
-     main="Gaussian")
-```
-
-```{r}
-plot(density(acci_ppp.km, 
-             sigma=bw.ppl, 
-             edge=TRUE, 
-             kernel="epanechnikov"), 
-     main="Epanechnikov")
-```
-
-```{r}
-plot(density(acci_ppp.km, 
-             sigma=bw.ppl, 
-             edge=TRUE, 
-             kernel="quartic"), 
-     main="Quartic")
+# 使用 for 循环遍历星期几并绘制 KDE
+for(i in tims){ 
+  plot(st_kde, i, 
+       override.par=FALSE, 
+       fix.range=TRUE, 
+       main=paste("KDE on weekday", i))  # 显示星期几的KDE
+}
 ```
 
 
 ```{r}
-plot(density(acci_ppp.km, 
-             sigma=bw.ppl, 
-             edge=TRUE, 
-             kernel="disc"), 
-     main="Disc") 
+
 ```
 
+
+
+
+
+6.9.1 Creating ppp object
+
+```{r}
+acci_yday_ppp <- acci %>% 
+  select(dayofyear) %>%
+  as.ppp()
+```
 
 
 ```{r}
-plot(st_geometry(road))
-plot(acci,add=T,col='red',pch = 19)
-
+acci_yday_owin <- acci_yday_ppp[admin_level_2_filtered_owin]
+summary(acci_yday_owin)
 ```
 ```{r}
-tmap_mode('view')
-tm_shape(acci) + 
-  tm_dots() + 
-  tm_shape(road) +
-  tm_lines()
+# 假设 fire_month_owin 是点模式数据，月份信息存储在 marks 中
+# 创建颜色向量，为每个月分配不同的颜色
+month_colors <- colorRampPalette(c("blue", "green", "yellow", "red"))(12)
+
+# 绘制带有颜色区分的图
+plot(acci_month_owin, cols = month_colors[as.numeric(marks(acci_month_owin))],
+     main = "Accidents by Month", legend = TRUE)
+
 ```
+
+```{r}
+acci_wday_owin <- acci_wday_ppp[admin_level_2_filtered_owin]
+summary(acci_wday_owin)
+```
+```{r}
+# 假设 fire_month_owin 是点模式数据，月份信息存储在 marks 中
+# 创建颜色向量，为每个月分配不同的颜色
+week_colors <- colorRampPalette(c("blue", "green", "yellow", "red"))(12)
+
+# 绘制带有颜色区分的图
+plot(acci_week_owin, cols = week_colors[as.numeric(marks(acci_week_owin))],
+     main = "Accidents by Month", legend = TRUE)
+
+```
+
 
 
 
