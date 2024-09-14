@@ -10,6 +10,7 @@ execute:
   freeze: true
 ---
 
+
 ## **Geospatial Analytics for Social Good: Thailand Road Accident Case Study**
 
 overview According to the World Health Organization (WHO), road traffic accidents cause approximately 1.19 million deaths annually, with 20-50 million non-fatal injuries. Vulnerable road users, such as pedestrians, cyclists, and motorcyclists, make up more than half of all deaths. Road traffic injuries are the leading cause of death for children and young adults aged 5–29, with two-thirds of fatalities occurring among working-age individuals (18–59 years). Low- and middle-income countries, which own 60% of the world’s vehicles, account for 90% of road fatalities. Road accidents also impose significant economic burdens, costing countries 3% of their annual GDP.
@@ -32,13 +33,16 @@ The dataset contains line features representing the road network of Thailand. Ea
 
 -   [Thailand - Subnational Administrative  Boundaries](https://data.humdata.org/dataset/cod-ab-tha?) on HDX,a polygon feature layer in ESRI Shapefile format.
 
+
 ```{r}
 pacman::p_load(sf, raster, spatstat,sparr,tmap, tidyverse)
 ```
 
+
 Importing the aspatial "Traffic Accident Data"
 
 1.Importing & Converting an Aspatial Data
+
 
 ```{r}
 selected_provinces <- c("Bangkok", "Nonthaburi", "Pathum Thani", "Samut Prakan", "Nakhon Pathom", "Samut Sakhon")
@@ -59,20 +63,20 @@ acci <- read_csv("data/rawdata/thai_road_accident_2019_2022.csv") %>%
 
 ```
 
-
 ```{r}
 write_rds(acci,"data/rds/acci.rds")
 
 acci <- read_rds("data/rds/acci.rds")
 ```
 
-
 ```{r}
 glimpse(acci)
 ```
 
+
 notice:
 Table above shows the content of acci, Notice that a new column called geometry has been added into the data frame. On the other hand, the longitude and latitude columns have been dropped from the data frame.
+
 
 ```{r}
 tmap_mode('view')
@@ -84,16 +88,19 @@ tm_shape(acci)+
 tmap_mode('plot')
 ```
 
+
 Converting sf data frames to sp’s Spatial* class
+
 ```{r}
 acci_s <- as_Spatial(acci)
 ```
 
-
 ```{r}
 acci_s
 ```
+
 4.5.2 Converting the Spatial* class into generic sp format
+
 ```{r}
 acci_sp <- as(acci_s, "SpatialPoints")
 ```
@@ -102,7 +109,9 @@ acci_sp <- as(acci_s, "SpatialPoints")
 acci_sp
 ```
 
+
 Converting the generic sp format into spatstat’s ppp format
+
 
 ```{r}
 acci_ppp <- as.ppp(acci)
@@ -112,19 +121,24 @@ acci_ppp
 ```{r}
 summary(acci_ppp)
 ```
+
 ```{r}
 any(duplicated(acci_ppp))
 ```
+
 
 #要整合边界的数据
 
 1.Importing & Converting an Geospatial Data
 
+
 ```{r}
 road <- st_read(dsn = "data/rawdata", layer = "hotosm_tha_roads_lines_shp") 
 ```
 
+
 from the data infromation we can notice that it has no CRS so we need to transfrom
+
 
 ```{r}
 road <- st_set_crs(road, 32647)
@@ -152,7 +166,9 @@ unique(road$highway)
 ```
 
 
+
 Importing the Singapore boundary data
+
 
 ```{r}
 # 导入第1级行政边界
@@ -186,7 +202,6 @@ admin_level_3_filtered <- admin_level_3 %>%
   filter(ADM1_EN %in% selected_provinces)
 ```
 
-
 ```{r}
 write_rds(admin_level_1_filtered,"data/rds/admin_level_1_filtered.rds")
 write_rds(admin_level_2_filtered,"data/rds/admin_level_2_filtered.rds")
@@ -199,7 +214,6 @@ admin_level_2_filtered <- read_rds("data/rds/admin_level_2_filtered.rds")
 admin_level_3_filtered <- read_rds("data/rds/admin_level_3_filtered.rds")
 ```
 
-
 ```{r}
 admin_level_2_filtered_owin <- as.owin(admin_level_2_filtered)
 admin_level_2_filtered_owin
@@ -208,7 +222,6 @@ admin_level_2_filtered_owin
 ```{r}
 class(admin_level_2_filtered_owin)
 ```
-
 
 ```{r}
 tm_shape(admin_level_2_filtered)+
@@ -227,7 +240,6 @@ tm_facets(by="Month_fac",
             drop.units = TRUE)
 ```
 
-
 ```{r}
 acci_month <- acci %>% 
   select(Month_num)
@@ -241,6 +253,7 @@ acci_month_ppp
 ```{r}
 summary(acci_month_ppp)
 ```
+
 ```{r}
 any(duplicated(acci_month_ppp))
 ```
@@ -260,6 +273,7 @@ any(duplicated(acci_month_ppp_jit))
 acci_month_owin <- acci_month_ppp[admin_level_2_filtered_owin]
 summary(acci_month_owin)
 ```
+
 ```{r}
 plot(acci_month_owin)
 ```
@@ -302,7 +316,9 @@ for(i in tims){
 ```
 
 
+
 2.Network Spatial Point Patterns Analysis 
+
 
 
 ```{r}
@@ -318,9 +334,11 @@ road_filtered <- road %>%
 ```{r}
 st_crs(road_filtered)
 ```
+
 ```{r}
 st_crs(admin_level_2_filtered)
 ```
+
 ```{r}
 #road_adm2f <- st_join(road,admin_level_2_filtered, join = st_intersects)
 ```
@@ -333,7 +351,6 @@ road_within_selected_areas <- st_join(road_filtered, admin_level_2_filtered, joi
 road_adm2f <- st_join(road_filtered, admin_level_2_filtered, join = st_intersects)
 ```
 
-
 ```{r}
 plot(st_geometry(road_adm2f))
 plot(acci,add=T,col='red',pch = 19)
@@ -344,7 +361,9 @@ plot(acci,add=T,col='red',pch = 19)
 
 
 
+
 Network KDE (NKDE) Analysis
+
 
 ```{r}
 lixels <- lixelize_lines(network, 
@@ -358,7 +377,9 @@ lixels <- lixelize_lines(network,
 
 
 
+
 6.9.1 Creating ppp object
+
 
 ```{r}
 acci_yday_ppp <- acci %>% 
@@ -366,11 +387,11 @@ acci_yday_ppp <- acci %>%
   as.ppp()
 ```
 
-
 ```{r}
 acci_yday_owin <- acci_yday_ppp[admin_level_2_filtered_owin]
 summary(acci_yday_owin)
 ```
+
 ```{r}
 # 假设 fire_month_owin 是点模式数据，月份信息存储在 marks 中
 # 创建颜色向量，为每个月分配不同的颜色
@@ -386,6 +407,7 @@ plot(acci_month_owin, cols = month_colors[as.numeric(marks(acci_month_owin))],
 acci_wday_owin <- acci_wday_ppp[admin_level_2_filtered_owin]
 summary(acci_wday_owin)
 ```
+
 ```{r}
 # 假设 fire_month_owin 是点模式数据，月份信息存储在 marks 中
 # 创建颜色向量，为每个月分配不同的颜色
@@ -396,10 +418,6 @@ plot(acci_week_owin, cols = week_colors[as.numeric(marks(acci_week_owin))],
      main = "Accidents by Month", legend = TRUE)
 
 ```
-
-
-
-
 
 ```{r}
 # 使用边界数据（如Bangkok Metropolitan Region）与道路数据进行空间连接
@@ -413,8 +431,6 @@ plot(st_geometry(road_bmr), col = "blue", main = "BMR")
 
 ```
 
-
-
 ```{r}
 #| eval: false
 ggplot() +
@@ -424,8 +440,6 @@ ggplot() +
   theme_minimal() +
   labs(title = "Thailand Administrative Boundaries")
 ```
-
-
 
 ```{r}
 
@@ -457,21 +471,14 @@ ggplot() +
 
 ```
 
-
-
 ```{r}
 plot(admin_level_1_filtered)
 ```
-
-
-
 
 ```{r}
 #| eval: false
 bmr_road <- st_intersection(road, admin_level_1_filtered)
 ```
-
-
 
 ```{r}
 tm_shape(bmr_road) +
@@ -480,7 +487,9 @@ tm_shape(bmr_road) +
   tm_borders()
 ```
 
+
 Spatial Point Patterns Analysis Methods
+
 
 ```{r}
 #| eval: false
@@ -494,7 +503,9 @@ plot(st_geometry(rdacc_sf), add = TRUE, col = 'red', pch = 19)
 
 
 
+
 #Point-in-polygon count  1.9.2 Point-in-polygon count，可以在边界里面分析哪个地方的犯罪率最高
+
 
 
 
