@@ -151,7 +151,6 @@ st_crs(road)
 unique(road$highway)
 ```
 
-
 Importing the Singapore boundary data
 
 ```{r}
@@ -226,7 +225,6 @@ tm_facets(by="Month_fac",
             free.coords=FALSE, 
             drop.units = TRUE)
 ```
-
 
 ```{r}
 acci_month <- acci %>% 
@@ -340,10 +338,6 @@ plot(acci,add=T,col='red',pch = 19)
 ```
 
 
-
-
-
-
 Network KDE (NKDE) Analysis
 
 ```{r}
@@ -414,7 +408,6 @@ plot(st_geometry(road_bmr), col = "blue", main = "BMR")
 ```
 
 
-
 ```{r}
 #| eval: false
 ggplot() +
@@ -424,7 +417,6 @@ ggplot() +
   theme_minimal() +
   labs(title = "Thailand Administrative Boundaries")
 ```
-
 
 
 ```{r}
@@ -458,12 +450,9 @@ ggplot() +
 ```
 
 
-
 ```{r}
 plot(admin_level_1_filtered)
 ```
-
-
 
 
 ```{r}
@@ -472,8 +461,8 @@ bmr_road <- st_intersection(road, admin_level_1_filtered)
 ```
 
 
-
 ```{r}
+#| eval: false
 tm_shape(bmr_road) +
   tm_lines() +
   tm_shape(admin_level_1_filtered) +
@@ -492,9 +481,8 @@ plot(st_geometry(rdacc_sf), add = TRUE, col = 'red', pch = 19)
 ```
 
 
-
-
 #Point-in-polygon count  1.9.2 Point-in-polygon count，可以在边界里面分析哪个地方的犯罪率最高
+
 
 
 
