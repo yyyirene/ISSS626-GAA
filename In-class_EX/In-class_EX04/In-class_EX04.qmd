@@ -1,0 +1,144 @@
+---
+title: "In-class EX04"
+author: "yang yayong"
+date: "Sep 16 2024"
+date-modified: "last-modified"
+execute:
+  eval: true
+  echo: true
+  message: false
+  freeze: true
+---
+
+Geographically weighted summary statistics with fixed
+
+
+```{r}
+pacman::p_load(sf,ggstatsplot, tmap, tidyverse, knitr,GWmodel)
+```
+
+```{r}
+hunan_sf <- st_read(dsn = "data/geospatial", 
+                 layer = "Hunan")
+```
+we can see the 
+```{r}
+hunan2012 <- read_csv("data/aspatial/Hunan_2012.csv")
+```
+
+
+```{r}
+hunan_sf <- left_join(hunan_sf,hunan2012)%>%
+  select(1:3,7,15,16,31,32)
+```
+
+Converting to spatialpolygonsDataFrame
+
+```{r}
+hunan_sp <- hunan_sf %>%
+  as_Spatial()
+```  
+
+Determine adaptive bandwidth
+cross-validation
+```{r}
+bw_cv <- bw.gwr(GDPPC ~ 1,#indepedent
+                data= hunan_sp,
+                approach = "cv",
+                adaptive = TRUE,
+                kernel = "bisquare",
+                longlat = T)
+              
+                
+```  
+AIC
+```{r}
+bw_cv <- bw.gwr(GDPPC ~ 1,#indepedent
+                data= hunan_sp,
+                approach = "AIC",
+                adaptive = TRUE, # great circle distance will be calculated 
+                kernel = "bisquare", #km
+                longlat = T)
+                
+```  
+```{r}
+bw_cv
+``` 
+
+Determine fixed bandwidth
+
+```{r}
+bw_cv <- bw.gwr(GDPPC ~ 1,#indepedent
+                data= hunan_sp,
+                approach = "cv",
+                adaptive = FALSE,
+                kernel = "bisquare",
+                longlat = T)
+              
+                
+``` 
+
+```{r}
+bw_AIC <- bw.gwr(GDPPC ~ 1,#indepedent
+                data= hunan_sp,
+                approach = "AIC",
+                adaptive = FALSE,
+                kernel = "bisquare",
+                longlat = T)
+              
+                
+``` 
+```{r}
+bw_AIC
+```
+
+distance value in km
+
+```{r}
+bw_cv
+```
+
+```{r}
+gwstat <- gwss(data = hunan_sp,
+               vars ="GDPPC",
+               bw = bw_AIC,
+               kernel = "bisquare",
+               adaptive = TRUE,
+               longlat = T
+              )
+
+```
+
+#have six means,have six neighbours
+
+Prepare the outpurt data
+
+```{r}
+gwstat_df <- as.data.frame(gwstat$SDF)
+```
+
+```{r}
+hanan_gwstat <- cbind(hunan_sf,gwstat_df)
+```
+
+#cbind is used to append the newly derved data.frame onto hunan_sf sf data.frame
+
+```{r}
+#| eval: false
+tm_shape(hunan_gstat) +
+  tm_fill("GDPPC_LM",
+          n= 5,
+          style = "quantile") +
+  tm_borders(alpha = 0.5) +
+  tm_layout(main.title = "Distribution of geographically wieghted mean",
+            main.tile.position = "center",
+            legend.text.size = 2.0 ,
+            legend.height =1.50,
+            legend.width =1.5,
+            frame = TRUE)
+```
+
+
+
+
+

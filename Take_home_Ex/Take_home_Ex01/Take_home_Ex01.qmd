@@ -151,29 +151,12 @@ st_crs(road)
 unique(road$highway)
 ```
 
-###卡壳
+#####卡壳
 
 ```{r}
-road_linestring <- st_cast(road, "LINESTRING")
-road_linestring$id <- seq_len(nrow(road_linestring))
+
 ```
 
-```{r}
-bmr_bbox_latlon <- st_bbox(c(xmin = 100.00, ymin = 13.40, xmax = 100.95, ymax = 14.25), crs = 4326)
-```
-
-```{r}
-bmr_boundary_latlon <- st_as_sfc(bmr_bbox_latlon)
-bmr_boundary_utm <- st_transform(bmr_boundary_latlon, crs = 32647)
-```
-
-```{r}
-st_crs(bmr_boundary_utm)
-```
-
-```{r}
-road_bmr_utm <- st_intersection(road_linestring, bmr_boundary_utm)
-```
 
 
 ```{r}
