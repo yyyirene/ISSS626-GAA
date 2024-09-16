@@ -24,13 +24,11 @@ In this study, I will demonstrate how to apply Spatial Point Patterns Analysis (
 
 For the purpose of this exercise, three basic data sets are needed, they are:
 
--   [Thailand Road Accident \[2019-2022\]](https://www.kaggle.com/datasets/thaweewatboy/thailand-road-accident-2019-2022) on Kaggle,a point feature layer in CSV format：
-The dataset contains point features representing road accidents in Thailand from 2019 to 2022. Each feature represents a unique accident event, with spatial attributes (latitude and longitude) and other associated accident data, such as the date, time, severity, and road type.
+-   [Thailand Road Accident \[2019-2022\]](https://www.kaggle.com/datasets/thaweewatboy/thailand-road-accident-2019-2022) on Kaggle,a point feature layer in CSV format： The dataset contains point features representing road accidents in Thailand from 2019 to 2022. Each feature represents a unique accident event, with spatial attributes (latitude and longitude) and other associated accident data, such as the date, time, severity, and road type.
 
--   [Thailand Roads (OpenStreetMap Export)](https://data.humdata.org/dataset/hotosm_tha_roads) on HDX,a line feature layer in ESRI Shapefile format：
-The dataset contains line features representing the road network of Thailand. Each feature represents a section of a road, with spatial attributes and additional road-related information.
+-   [Thailand Roads (OpenStreetMap Export)](https://data.humdata.org/dataset/hotosm_tha_roads) on HDX,a line feature layer in ESRI Shapefile format： The dataset contains line features representing the road network of Thailand. Each feature represents a section of a road, with spatial attributes and additional road-related information.
 
--   [Thailand - Subnational Administrative  Boundaries](https://data.humdata.org/dataset/cod-ab-tha?) on HDX,a polygon feature layer in ESRI Shapefile format.
+-   [Thailand - Subnational Administrative Boundaries](https://data.humdata.org/dataset/cod-ab-tha?) on HDX,a polygon feature layer in ESRI Shapefile format.
 
 ```{r}
 pacman::p_load(sf, raster, spatstat,sparr,tmap, tidyverse)
@@ -40,9 +38,13 @@ Importing the aspatial "Traffic Accident Data"
 
 1.Importing & Converting an Aspatial Data
 
+We first select the Bangkok Metropolitan Region (BMR).
+
 ```{r}
 selected_provinces <- c("Bangkok", "Nonthaburi", "Pathum Thani", "Samut Prakan", "Nakhon Pathom", "Samut Sakhon")
 ```
+
+2.Data preprocessing and transformation
 
 ```{r}
 acci <- read_csv("data/rawdata/thai_road_accident_2019_2022.csv") %>%
@@ -59,20 +61,17 @@ acci <- read_csv("data/rawdata/thai_road_accident_2019_2022.csv") %>%
 
 ```
 
-
 ```{r}
 write_rds(acci,"data/rds/acci.rds")
 
 acci <- read_rds("data/rds/acci.rds")
 ```
 
-
 ```{r}
 glimpse(acci)
 ```
 
-notice:
-Table above shows the content of acci, Notice that a new column called geometry has been added into the data frame. On the other hand, the longitude and latitude columns have been dropped from the data frame.
+notice: Table above shows the content of acci, Notice that a new column called geometry has been added into the data frame. On the other hand, the longitude and latitude columns have been dropped from the data frame.
 
 ```{r}
 tmap_mode('view')
@@ -84,16 +83,18 @@ tm_shape(acci)+
 tmap_mode('plot')
 ```
 
-Converting sf data frames to sp’s Spatial* class
+Converting sf data frames to sp’s Spatial\* class
+
 ```{r}
 acci_s <- as_Spatial(acci)
 ```
 
-
 ```{r}
 acci_s
 ```
-4.5.2 Converting the Spatial* class into generic sp format
+
+4.5.2 Converting the Spatial\* class into generic sp format
+
 ```{r}
 acci_sp <- as(acci_s, "SpatialPoints")
 ```
@@ -112,11 +113,10 @@ acci_ppp
 ```{r}
 summary(acci_ppp)
 ```
+
 ```{r}
 any(duplicated(acci_ppp))
 ```
-
-#要整合边界的数据
 
 1.Importing & Converting an Geospatial Data
 
@@ -151,18 +151,51 @@ st_crs(road)
 unique(road$highway)
 ```
 
-Importing the Singapore boundary data
+###卡壳
 
 ```{r}
-# 导入第1级行政边界
+road_linestring <- st_cast(road, "LINESTRING")
+road_linestring$id <- seq_len(nrow(road_linestring))
+```
+
+```{r}
+bmr_bbox_latlon <- st_bbox(c(xmin = 100.00, ymin = 13.40, xmax = 100.95, ymax = 14.25), crs = 4326)
+```
+
+```{r}
+bmr_boundary_latlon <- st_as_sfc(bmr_bbox_latlon)
+bmr_boundary_utm <- st_transform(bmr_boundary_latlon, crs = 32647)
+```
+
+```{r}
+st_crs(bmr_boundary_utm)
+```
+
+```{r}
+road_bmr_utm <- st_intersection(road_linestring, bmr_boundary_utm)
+```
+
+
+```{r}
+tmap_mode("view")
+tm_shape(bmr_boundary_utm) + tm_borders(col = "blue") + # BMR 范围
+  tm_shape(road_bmr_utm) + tm_lines(col = "black") # BMR 内的道路
+
+```
+
+
+1.3 Importing the Singapore boundary data
+
+```{r}
 admin_level_1 <- st_read("data/rawdata/tha_admbnda_adm1_rtsd_20220121.shp")
 
-# 导入第2级行政边界
 admin_level_2 <- st_read("data/rawdata/tha_admbnda_adm2_rtsd_20220121.shp")
 
-# 导入第3级行政边界
 admin_level_3 <- st_read("data/rawdata/tha_admbnda_adm3_rtsd_20220121.shp")
+
 ```
+
+Transform boundary data
 
 ```{r}
 admin_level_1 <- st_transform(admin_level_1, 32647)
@@ -170,21 +203,18 @@ admin_level_2 <- st_transform(admin_level_2, 32647)
 admin_level_3 <- st_transform(admin_level_3, 32647)
 ```
 
-```{r}
+Select the boundary of BMR
 
-# 筛选第一级行政边界
+```{r}
 admin_level_1_filtered <- admin_level_1 %>%
   filter(ADM1_EN %in% selected_provinces)
 
-# 筛选第二级行政边界
 admin_level_2_filtered <- admin_level_2 %>%
   filter(ADM1_EN %in% selected_provinces)
 
-# 筛选第三级行政边界
 admin_level_3_filtered <- admin_level_3 %>%
   filter(ADM1_EN %in% selected_provinces)
 ```
-
 
 ```{r}
 write_rds(admin_level_1_filtered,"data/rds/admin_level_1_filtered.rds")
@@ -198,16 +228,106 @@ admin_level_2_filtered <- read_rds("data/rds/admin_level_2_filtered.rds")
 admin_level_3_filtered <- read_rds("data/rds/admin_level_3_filtered.rds")
 ```
 
-
 ```{r}
 admin_level_2_filtered_owin <- as.owin(admin_level_2_filtered)
 admin_level_2_filtered_owin
 ```
 
+
+#Network Spatial Point Patterns Analysis
+
+```{r}
+tm_shape(mtl_network) +  #road 的数据出现问题
+  tm_lines("black") + 
+  tm_shape(acci) + 
+  tm_dots("red", size = 0.2)
+
+```
+
+
+
+#Network NKDE Analysis
+
+```{r}
+lixels <- lixelize_lines(network, 
+                         700, 
+                         mindist = 375)
+```
+
+
+```{r}
+samples <- lines_center(lixels) 
+```
+
+```{r}
+densities <- nkde(network, 
+                  events = childcare,
+                  w = rep(1, nrow(childcare)),
+                  samples = samples,
+                  kernel_name = "quartic",
+                  bw = 300, 
+                  div= "bw", 
+                  method = "simple", 
+                  digits = 1, 
+                  tol = 1,
+                  grid_shape = c(1,1), 
+                  max_depth = 8,
+                  agg = 5, 
+                  sparse = TRUE,
+                  verbose = FALSE)
+
+```
+
+```{r}
+samples$density <- densities
+lixels$density <- densities
+```
+
+
+```{r}
+# rescaling to help the mapping
+samples$density <- samples$density*1000
+lixels$density <- lixels$density*1000
+```
+
+```{r}
+tmap_mode('view')
+tm_shape(lixels)+
+  tm_lines(col="density")+
+tm_shape(childcare)+
+  tm_dots()
+tmap_mode('plot')
+```
+
+
+Network Constrained G- and K-Function Analysis
+
+Ho: The observed spatial point events (i.e distribution of accidence) are uniformly distributed over a street network in BMR.
+```{r}
+kfun_childcare <- kfunctions(network, 
+                             childcare,
+                             start = 0, 
+                             end = 1000, 
+                             step = 50, 
+                             width = 50, 
+                             nsim = 50, 
+                             resolution = 50,
+                             verbose = FALSE, 
+                             conf_int = 0.05)
+```
+
+```{r}
+kfun_childcare$plotk
+```
+
+
+
+
+
+
 ```{r}
 class(admin_level_2_filtered_owin)
 ```
-
 
 ```{r}
 tm_shape(admin_level_2_filtered)+
@@ -239,6 +359,7 @@ acci_month_ppp
 ```{r}
 summary(acci_month_ppp)
 ```
+
 ```{r}
 any(duplicated(acci_month_ppp))
 ```
@@ -254,10 +375,12 @@ acci_month_ppp_jit <- rjitter(acci_month_ppp,
 any(duplicated(acci_month_ppp_jit))
 ```
 
+
 ```{r}
 acci_month_owin <- acci_month_ppp[admin_level_2_filtered_owin]
 summary(acci_month_owin)
 ```
+
 ```{r}
 plot(acci_month_owin)
 ```
@@ -299,9 +422,7 @@ for(i in tims){
 }
 ```
 
-
-2.Network Spatial Point Patterns Analysis 
-
+2.Network Spatial Point Patterns Analysis
 
 ```{r}
 selected_types <- c("motorway", "motorway_link", "trunk", "trunk_link", 
@@ -316,9 +437,11 @@ road_filtered <- road %>%
 ```{r}
 st_crs(road_filtered)
 ```
+
 ```{r}
 st_crs(admin_level_2_filtered)
 ```
+
 ```{r}
 #road_adm2f <- st_join(road,admin_level_2_filtered, join = st_intersects)
 ```
@@ -331,25 +454,10 @@ road_within_selected_areas <- st_join(road_filtered, admin_level_2_filtered, joi
 road_adm2f <- st_join(road_filtered, admin_level_2_filtered, join = st_intersects)
 ```
 
-
 ```{r}
 plot(st_geometry(road_adm2f))
 plot(acci,add=T,col='red',pch = 19)
 ```
-
-
-Network KDE (NKDE) Analysis
-
-```{r}
-lixels <- lixelize_lines(network, 
-                         700, 
-                         mindist = 375)
-```
-
-
-
-
-
 
 
 6.9.1 Creating ppp object
@@ -360,11 +468,11 @@ acci_yday_ppp <- acci %>%
   as.ppp()
 ```
 
-
 ```{r}
 acci_yday_owin <- acci_yday_ppp[admin_level_2_filtered_owin]
 summary(acci_yday_owin)
 ```
+
 ```{r}
 # 假设 fire_month_owin 是点模式数据，月份信息存储在 marks 中
 # 创建颜色向量，为每个月分配不同的颜色
@@ -380,6 +488,7 @@ plot(acci_month_owin, cols = month_colors[as.numeric(marks(acci_month_owin))],
 acci_wday_owin <- acci_wday_ppp[admin_level_2_filtered_owin]
 summary(acci_wday_owin)
 ```
+
 ```{r}
 # 假设 fire_month_owin 是点模式数据，月份信息存储在 marks 中
 # 创建颜色向量，为每个月分配不同的颜色
@@ -390,10 +499,6 @@ plot(acci_week_owin, cols = week_colors[as.numeric(marks(acci_week_owin))],
      main = "Accidents by Month", legend = TRUE)
 
 ```
-
-
-
-
 
 ```{r}
 # 使用边界数据（如Bangkok Metropolitan Region）与道路数据进行空间连接
@@ -407,7 +512,6 @@ plot(st_geometry(road_bmr), col = "blue", main = "BMR")
 
 ```
 
-
 ```{r}
 #| eval: false
 ggplot() +
@@ -418,28 +522,7 @@ ggplot() +
   labs(title = "Thailand Administrative Boundaries")
 ```
 
-
 ```{r}
-
-#ggplot() +
-  #geom_sf(data = bangkok_map, fill = "lightblue", color = "black") +
-  #theme_minimal() +
-  #labs(title = "Bangkok Administrative Boundaries")
-
-
-#ggplot() +
-  #geom_sf(data = bangkok_map, fill = "grey", color = "black") +
-  #geom_sf_text(aes(label = ADM1_EN), size = 3, color = "black") +
-  #theme_minimal() +
-  #labs(title = "Bangkok Metropolitan Region")
-
-
-#ggplot() +
-  #geom_sf(data = bangkok_map, fill = "grey", color = "black") +  # 绘制地图
-  #geom_sf_text(data = bangkok_map, aes(label = ADM1_EN), size = 3, color = "black") +  # 添加省份名称标签
- # theme_minimal() +
-  #labs(title = "Bangkok Metropolitan Region")
-
 ggplot() +
   geom_sf(data = admin_level_1_filtered, aes(fill = ifelse(ADM1_EN == "Bangkok", "Bangkok", "Other")), color = "black") +  # 设置不同的填充颜色
   geom_sf_text(data = admin_level_1_filtered, aes(label = ADM1_EN), size = 3, color = "black") +  # 添加省份名称标签
@@ -449,40 +532,4 @@ ggplot() +
 
 ```
 
-
-```{r}
-plot(admin_level_1_filtered)
-```
-
-
-```{r}
-#| eval: false
-bmr_road <- st_intersection(road, admin_level_1_filtered)
-```
-
-
-```{r}
-#| eval: false
-tm_shape(bmr_road) +
-  tm_lines() +
-  tm_shape(admin_level_1_filtered) +
-  tm_borders()
-```
-
-Spatial Point Patterns Analysis Methods
-
-```{r}
-#| eval: false
-# 绘制道路网络
-plot(st_geometry(bangkok_map), col = "grey", main = "Road Network with Accidents")
-
-# 在道路网络上叠加事故点（红色点表示事故位置）
-plot(st_geometry(rdacc_sf), add = TRUE, col = 'red', pch = 19)
-```
-
-
-#Point-in-polygon count  1.9.2 Point-in-polygon count，可以在边界里面分析哪个地方的犯罪率最高
-
-
-
-
+#Point-in-polygon count 1.9.2 Point-in-polygon count，可以在边界里面分析哪个地方的犯罪率最高
