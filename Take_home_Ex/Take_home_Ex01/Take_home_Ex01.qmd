@@ -55,9 +55,9 @@ acci <- read_csv("data/rawdata/thai_road_accident_2019_2022.csv") %>%
   mutate(hour = hour(incident_datetime)) %>%  # 提取小时
   filter(!is.na(longitude) & longitude != "", 
          !is.na(latitude) & latitude != "",
-         province_en %in% selected_provinces) %>%  # 过滤所需的省份
+         province_en %in% selected_provinces) %>%  
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>%
-  st_transform(crs = 32647)  # 转换为所需的投影
+  st_transform(crs = 32647)  
 
 ```
 
@@ -74,13 +74,21 @@ glimpse(acci)
 notice: Table above shows the content of acci, Notice that a new column called geometry has been added into the data frame. On the other hand, the longitude and latitude columns have been dropped from the data frame.
 
 ```{r}
-tmap_mode('view')
-tm_shape(acci)+
-  tm_dots(col = 'red')
+vehicle_type_counts <- acci %>%
+  count(vehicle_type, sort = TRUE)
 ```
 
 ```{r}
-tmap_mode('plot')
+ggplot(vehicle_type_counts, aes(x = reorder(vehicle_type, n), y = n)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +  # 让图表更易阅读
+  labs(x = "Vehicle Type", y = "Count", title = "Number of Accidents by Vehicle Type")
+```
+
+```{r}
+#tmap_mode('view')
+#tm_shape(acci)+
+  #tm_dots(col = 'red')
 ```
 
 Converting sf data frames to sp’s Spatial\* class
@@ -124,10 +132,10 @@ any(duplicated(acci_ppp))
 road <- st_read(dsn = "data/rawdata", layer = "hotosm_tha_roads_lines_shp") 
 ```
 
-from the data infromation we can notice that it has no CRS so we need to transfrom
+#from the data infromation we can notice that it has no CRS so we need to transfrom
 
 ```{r}
-road <- st_set_crs(road, 32647)
+#road <- st_set_crs(road, 32647)
 ```
 
 ```{r}
@@ -149,41 +157,44 @@ st_crs(road)
 ```{r}
 # 或者只查看唯一的 `highway` 类型
 unique(road$highway)
-```
 
-#####卡壳
+```
 
 ```{r}
-
+# 挑选出主要道路类型，例如高速公路、高等级公路等
+selected_roads <- road %>%
+  filter(highway %in% c("motorway", "trunk", "primary"))
 ```
-
-
 
 ```{r}
-tmap_mode("view")
-tm_shape(bmr_boundary_utm) + tm_borders(col = "blue") + # BMR 范围
-  tm_shape(road_bmr_utm) + tm_lines(col = "black") # BMR 内的道路
-
+ggplot() +
+  geom_sf(data = selected_roads, color = "blue", size = 0.5) +
+  labs(title = "Selected Roads (Motorway, Trunk, Primary)")
 ```
-
 
 1.3 Importing the Singapore boundary data
 
 ```{r}
-admin_level_1 <- st_read("data/rawdata/tha_admbnda_adm1_rtsd_20220121.shp")
+# 读取行政区划一级数据
+admin_level_1 <- st_read(dsn = "data/rawdata", 
+                         layer = "tha_admbnda_adm1_rtsd_20220121")
 
-admin_level_2 <- st_read("data/rawdata/tha_admbnda_adm2_rtsd_20220121.shp")
+# 读取行政区划二级数据
+admin_level_2 <- st_read(dsn = "data/rawdata", 
+                         layer = "tha_admbnda_adm2_rtsd_20220121")
 
-admin_level_3 <- st_read("data/rawdata/tha_admbnda_adm3_rtsd_20220121.shp")
+# 读取行政区划三级数据
+admin_level_3 <- st_read(dsn = "data/rawdata", 
+                         layer = "tha_admbnda_adm3_rtsd_20220121")
 
 ```
 
 Transform boundary data
 
 ```{r}
-admin_level_1 <- st_transform(admin_level_1, 32647)
-admin_level_2 <- st_transform(admin_level_2, 32647)
-admin_level_3 <- st_transform(admin_level_3, 32647)
+#admin_level_1 <- st_transform(admin_level_1, 32647)
+#admin_level_2 <- st_transform(admin_level_2, 32647)
+#admin_level_3 <- st_transform(admin_level_3, 32647)
 ```
 
 Select the boundary of BMR
@@ -212,10 +223,66 @@ admin_level_3_filtered <- read_rds("data/rds/admin_level_3_filtered.rds")
 ```
 
 ```{r}
+ggplot() +
+  geom_sf(data = admin_level_1_filtered, color = "blue", size = 0.5)
+```
+
+```{r}
+#admin_union <- st_union(admin_level_1_filtered)
+
+# 提取边界线
+#admin_boundary <- st_boundary(admin_union)
+```
+
+```{r}
+# 可视化边界线
+#ggplot() +
+  #geom_sf(data = admin_union, fill = "lightgrey", color = NA) +  # 原始区域
+  #geom_sf(data = admin_boundary, color = "blue") +  # 边界线
+  #labs(title = "Boundary of the Selected Region")
+```
+
+```{r}
+st_crs(selected_roads) 
+st_crs(admin_boundary)
+```
+
+```{r}
+road_i <- st_intersection(road_buffer, admin_level_1_filtered)
+
+```
+
+
+```{r}
+# 3. 可视化结果
+library(ggplot2)
+
+ggplot() +
+  geom_sf(data = admin_level_1_filtered, fill = "lightgrey", color = "black", size = 0.2) +
+  geom_sf(data = road_i, color = "blue", size = 0.5) +
+  labs(title = "Intersection of Road Buffers and Administrative Boundaries") +
+  theme_minimal()
+```
+
+
+```{r}
+road_i_t <- st_transform(road_i, crs = 32647)
+```
+
+```{r}
+plot(road_i_t)
+plot(acci,col='red',pch = 1)
+```
+
+
+```{r}
 admin_level_2_filtered_owin <- as.owin(admin_level_2_filtered)
 admin_level_2_filtered_owin
 ```
 
+
+
+Point-in-polygon count
 
 #Network Spatial Point Patterns Analysis
 
@@ -227,8 +294,6 @@ tm_shape(mtl_network) +  #road 的数据出现问题
 
 ```
 
-
-
 #Network NKDE Analysis
 
 ```{r}
@@ -236,7 +301,6 @@ lixels <- lixelize_lines(network,
                          700, 
                          mindist = 375)
 ```
-
 
 ```{r}
 samples <- lines_center(lixels) 
@@ -266,7 +330,6 @@ samples$density <- densities
 lixels$density <- densities
 ```
 
-
 ```{r}
 # rescaling to help the mapping
 samples$density <- samples$density*1000
@@ -282,10 +345,10 @@ tm_shape(childcare)+
 tmap_mode('plot')
 ```
 
-
 Network Constrained G- and K-Function Analysis
 
 Ho: The observed spatial point events (i.e distribution of accidence) are uniformly distributed over a street network in BMR.
+
 ```{r}
 kfun_childcare <- kfunctions(network, 
                              childcare,
@@ -302,11 +365,6 @@ kfun_childcare <- kfunctions(network,
 ```{r}
 kfun_childcare$plotk
 ```
-
-
-
-
-
 
 ```{r}
 class(admin_level_2_filtered_owin)
@@ -357,7 +415,6 @@ acci_month_ppp_jit <- rjitter(acci_month_ppp,
 ```{r}
 any(duplicated(acci_month_ppp_jit))
 ```
-
 
 ```{r}
 acci_month_owin <- acci_month_ppp[admin_level_2_filtered_owin]
@@ -441,7 +498,6 @@ road_adm2f <- st_join(road_filtered, admin_level_2_filtered, join = st_intersect
 plot(st_geometry(road_adm2f))
 plot(acci,add=T,col='red',pch = 19)
 ```
-
 
 6.9.1 Creating ppp object
 

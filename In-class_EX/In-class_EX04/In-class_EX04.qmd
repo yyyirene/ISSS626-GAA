@@ -12,7 +12,6 @@ execute:
 
 Geographically weighted summary statistics with fixed
 
-
 ```{r}
 pacman::p_load(sf,ggstatsplot, tmap, tidyverse, knitr,GWmodel)
 ```
@@ -21,11 +20,12 @@ pacman::p_load(sf,ggstatsplot, tmap, tidyverse, knitr,GWmodel)
 hunan_sf <- st_read(dsn = "data/geospatial", 
                  layer = "Hunan")
 ```
-we can see the 
+
+we can see the
+
 ```{r}
 hunan2012 <- read_csv("data/aspatial/Hunan_2012.csv")
 ```
-
 
 ```{r}
 hunan_sf <- left_join(hunan_sf,hunan2012)%>%
@@ -37,10 +37,10 @@ Converting to spatialpolygonsDataFrame
 ```{r}
 hunan_sp <- hunan_sf %>%
   as_Spatial()
-```  
+```
 
-Determine adaptive bandwidth
-cross-validation
+Determine adaptive bandwidth cross-validation
+
 ```{r}
 bw_cv <- bw.gwr(GDPPC ~ 1,#indepedent
                 data= hunan_sp,
@@ -50,8 +50,10 @@ bw_cv <- bw.gwr(GDPPC ~ 1,#indepedent
                 longlat = T)
               
                 
-```  
+```
+
 AIC
+
 ```{r}
 bw_cv <- bw.gwr(GDPPC ~ 1,#indepedent
                 data= hunan_sp,
@@ -60,10 +62,11 @@ bw_cv <- bw.gwr(GDPPC ~ 1,#indepedent
                 kernel = "bisquare", #km
                 longlat = T)
                 
-```  
+```
+
 ```{r}
 bw_cv
-``` 
+```
 
 Determine fixed bandwidth
 
@@ -76,7 +79,7 @@ bw_cv <- bw.gwr(GDPPC ~ 1,#indepedent
                 longlat = T)
               
                 
-``` 
+```
 
 ```{r}
 bw_AIC <- bw.gwr(GDPPC ~ 1,#indepedent
@@ -87,7 +90,8 @@ bw_AIC <- bw.gwr(GDPPC ~ 1,#indepedent
                 longlat = T)
               
                 
-``` 
+```
+
 ```{r}
 bw_AIC
 ```
@@ -137,8 +141,3 @@ tm_shape(hunan_gstat) +
             legend.width =1.5,
             frame = TRUE)
 ```
-
-
-
-
-
