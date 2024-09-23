@@ -1,0 +1,142 @@
+---
+title: "In-class EX05"
+author: "yang yayong"
+date: "Sep 23 2024"
+date-modified: "last-modified"
+execute:
+  eval: true
+  echo: true
+  message: false
+  freeze: true
+---
+
+```{r}
+pacman::p_load(sf, spdep, tmap, tidyverse)
+```
+
+```{r}
+hunan <- st_read(dsn = "data/geospatial", 
+                 layer = "Hunan")
+```
+
+```{r}
+hunan2012 <- read_csv("data/aspatial/Hunan_2012.csv")
+```
+
+```{r}
+hunan <- left_join(hunan,hunan2012) %>%
+  select(1:4, 7, 15)
+```
+
+```{r}
+##| eval: false
+wm_q<- hunan_GDPPC %>%
+  mutate(nb=st_contiguity(geometry),
+         wt=st_weights(nb,
+                       style = "w"),
+         .before=1)
+```
+
+
+mutate:create 
+nb:neighbour list 
+wt:
+
+```{r}
+##| eval: false
+moranI<- global_moran(km_qGDPPC,
+                      wm_q$nb,
+                      wm_q$wt) 
+glimpse(moranI)
+```
+
+p-value and variance value
+
+```{r}
+set.seed(1234)
+```
+
+
+```{r}
+##| eval: false
+global_moran_perm <- (wm_q$GDPPC,
+                      wm_q$nb,
+                      wm_q$wt, 
+                      nsim = 999)
+
+ 
+```
+start with 99
+ 
+test
+ 
+local moran's I
+
+```{r}
+#| eval: false
+lisa <- wm_q %>%
+  mutate(local_moran = local_moran(
+    GDPPC,np,nsim=99),
+    .before=1)  %>%
+  unnest(local_moran)
+
+```
+
+pay attention to 10 local measure
+
+mean use 
+
+another is median  already have hh hl
+
+pysal
+
+p_ii_sim look at this one
+
+
+compare ii with p_ii_sim
+
+use + - colour to look at the plot
+
+
+```{r}
+tmap_mode("plot")
+tm_shape(lisa) +
+  tm_fill("p_li_sim") +
+  tm_borders(alpha = 0.5) +
+  tm_layout(main.title = "p-value of Local Moran's I", main.title.size = 2)
+
+```
+
+```{r}
+tmap_mode("plot")
+tm_shape(lisa) +
+  tm_fill("Ii") +
+  tm_borders(alpha = 0.5) +
+  tm_view(set.zoom.limits = c(6,8)) +
+  tm_layout(
+    main.title = "Local Moran's I of GDPPC",
+    main.title.size = 2
+  )
+
+
+```
+
+visualising lisa map
+```{r}
+
+```
+
+use some statistic significant
+p_ii <0.5
+
+
+ll 
+
+ll significant so is cluster
+
+gi*
+view(hcsa)
+
+inclass show a new way to do it 
+
+

@@ -10,17 +10,29 @@ execute:
   freeze: true
 ---
 
-## **Geospatial Analytics for Social Good: Thailand Road Accident Case Study**
+# **Geospatial Analytics for Social Good:**
 
-overview According to the World Health Organization (WHO), road traffic accidents cause approximately 1.19 million deaths annually, with 20-50 million non-fatal injuries. Vulnerable road users, such as pedestrians, cyclists, and motorcyclists, make up more than half of all deaths. Road traffic injuries are the leading cause of death for children and young adults aged 5–29, with two-thirds of fatalities occurring among working-age individuals (18–59 years). Low- and middle-income countries, which own 60% of the world’s vehicles, account for 90% of road fatalities. Road accidents also impose significant economic burdens, costing countries 3% of their annual GDP.
+# **Thailand Road Accident Case Study**
+
+## 1 The scene
+
+Overview According to the World Health Organization (WHO), road traffic accidents cause approximately 1.19 million deaths annually, with 20-50 million non-fatal injuries. Vulnerable road users, such as pedestrians, cyclists, and motorcyclists, make up more than half of all deaths. Road traffic injuries are the leading cause of death for children and young adults aged 5–29, with two-thirds of fatalities occurring among working-age individuals (18–59 years). Low- and middle-income countries, which own 60% of the world’s vehicles, account for 90% of road fatalities. Road accidents also impose significant economic burdens, costing countries 3% of their annual GDP.
 
 Thailand has the highest road death rate in Southeast Asia, with around 20,000 deaths annually. From 2014 to 2021, 19% of accidents occurred on national highways, and there was a 66% chance of encountering accident-prone zones ("black spots"), with 66% on straight roads, 13% at curves, and smaller percentages at intersections, bridges, and slopes.
 
-Objectives
+## 1.1 Objectives
 
-In this study, I will demonstrate how to apply Spatial Point Patterns Analysis (SPPA) and spatio-temporal visualization techniques to uncover the factors influencing road traffic accidents in the Bangkok Metropolitan Region (BMR). By employing appropriate statistical and geospatial methods, I aim to provide a detailed analysis of both spatial and spatio-temporal patterns of accidents, offering insights into the impact of behavioral, environmental, and temporal factors. Recommendations for improving road safety in BMR will also be proposed based on the findings.
+we are tasked to **discover factors affecting road traffic accidents** in the [Bangkok Metropolitan Region BMR](https://en.wikipedia.org/wiki/Bangkok_Metropolitan_Region) by employing both spatial spatio-temporal point patterns analysis methods.
 
-## **The Data**
+The specific objectives of this take-home exercise are as follows:
+
+-   To visualize the spatio-temporal dynamics of road traffic accidents in BMR using **appropriate statistical graphics** and **geovisualization methods.**
+
+-   To conduct detailed **spatial analysis** of road traffic accidents using appropriate **Network Spatial Point Patterns Analysis methods.**
+
+-   To conduct detailed **spatio-temporal analysis** of road traffic accidents using appropriate **Temporal Network Spatial Point Patterns Analysis methods**.
+
+## **1.3 The Data**
 
 For the purpose of this exercise, three basic data sets are needed, they are:
 
@@ -30,36 +42,84 @@ For the purpose of this exercise, three basic data sets are needed, they are:
 
 -   [Thailand - Subnational Administrative Boundaries](https://data.humdata.org/dataset/cod-ab-tha?) on HDX,a polygon feature layer in ESRI Shapefile format.
 
+## 2 **Installing and Loading the R packages**
+
 ```{r}
-pacman::p_load(sf, raster, spatstat,sparr,tmap, tidyverse)
+pacman::p_load(sf, raster, spatstat,sparr,tmap,tidyverse,spNetwork,lubridate,gridExtra,readr,reshape2,viridis,gifski,classInt,knitr)
 ```
 
-Importing the aspatial "Traffic Accident Data"
+Explanations for the imported library:
 
-1.Importing & Converting an Aspatial Data
+-   **sf**: For handling geospatial data and geometries.
+
+-   **raster**: Deals with raster data and geographic grid layers.
+
+-   **spatstat**: Spatial data analysis and point pattern analysis.
+
+-   **sparr**: Performs spatial relative risk estimation and kernel density estimation.
+
+-   **tmap**: For interactive and static maps.
+
+-   **tidyverse**: For data manipulation and visualization.
+
+-   **spNetwork**: Network-based spatial analysis.
+
+-   **lubridate**: Simplifies working with dates and times.
+
+-   **gridExtra**: For arranging and combining plots.
+
+-   **readr**: Fast reading of rectangular data.
+
+-   **reshape2**: For reshaping data.
+
+-   **viridis**: Provides color maps for data visualization.
+
+-   **gifski**: For GIF creation.
+
+-   **classInt**: For interval classification.
+
+-   **knitr**: Creates dynamic reports in R
+
+### 2.1 **Spatial Data Wrangling**
+
+#### 2.1.1 Importing & Converting an Aspatial Data
 
 We first select the Bangkok Metropolitan Region (BMR).
 
 ```{r}
-selected_provinces <- c("Bangkok", "Nonthaburi", "Pathum Thani", "Samut Prakan", "Nakhon Pathom", "Samut Sakhon")
+selected_provinces <- c("Bangkok", "Nonthaburi", "Pathum Thani", "Samut Prakan", "Nakhon Pathom", "Samut Sakhon","knitr")
 ```
 
-2.Data preprocessing and transformation
+#### 2.1.2 Data preprocessing and transformation
 
 ```{r}
 acci <- read_csv("data/rawdata/thai_road_accident_2019_2022.csv") %>%
+  mutate(Year = year(incident_datetime))  %>%
   mutate(Month_num = month(incident_datetime)) %>%
   mutate(Month_fac = month(incident_datetime, label = TRUE, abbr = TRUE)) %>%
   mutate(dayofweek = wday(incident_datetime, label = TRUE)) %>%
-  mutate(dayofyear = yday(incident_datetime)) %>%  # 修正闭合括号
-  mutate(hour = hour(incident_datetime)) %>%  # 提取小时
+  mutate(dayofyear = yday(incident_datetime)) %>%  
+  mutate(hour = hour(incident_datetime)) %>% 
+  mutate(Month = floor_date(incident_datetime, "month")) %>%
   filter(!is.na(longitude) & longitude != "", 
          !is.na(latitude) & latitude != "",
          province_en %in% selected_provinces) %>%  
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>%
-  st_transform(crs = 32647)  
-
+  st_transform(crs = 32647)  %>%
+  mutate(Time = as.numeric(difftime(incident_datetime, min(incident_datetime), units = "days")))
 ```
+
+Following steps:
+
+1.  **Load Data**: Reads a CSV file containing accident spatial data.
+
+2.  **Date-Time Operations**: Extracts year, month, day, and hour from the accident's date and time, as well as adds new columns for day of the week and day of the year.
+
+3.  **Filter Data**: Removes records with missing or invalid latitude/longitude and limits data to specific provinces.
+
+4.  **Spatial Transformation**: Converts the accident points into spatial objects with proper CRS and transforms the coordinates.
+
+5.  **Add Time Variable**: Computes the time difference from the first incident in days.
 
 ```{r}
 write_rds(acci,"data/rds/acci.rds")
@@ -71,74 +131,33 @@ acci <- read_rds("data/rds/acci.rds")
 glimpse(acci)
 ```
 
-notice: Table above shows the content of acci, Notice that a new column called geometry has been added into the data frame. On the other hand, the longitude and latitude columns have been dropped from the data frame.
+Notice: Table above shows the content of acci, notice that a new column called geometry has been added into the data frame. On the other hand, the longitude and latitude columns have been dropped from the data frame.
+
+#### 2.1.3 Mapping the spatial data set
 
 ```{r}
-vehicle_type_counts <- acci %>%
-  count(vehicle_type, sort = TRUE)
+tmap_mode('view')
+tm_shape(acci)+
+  tm_dots(col = 'red')
 ```
 
 ```{r}
-ggplot(vehicle_type_counts, aes(x = reorder(vehicle_type, n), y = n)) +
-  geom_bar(stat = "identity") +
-  coord_flip() +  # 让图表更易阅读
-  labs(x = "Vehicle Type", y = "Count", title = "Number of Accidents by Vehicle Type")
+tmap_mode('plot')
 ```
 
-```{r}
-#tmap_mode('view')
-#tm_shape(acci)+
-  #tm_dots(col = 'red')
-```
+### 2.2 Geospatial Data Wrangling
 
-Converting sf data frames to sp’s Spatial\* class
+#### 2.2.1 Importing the geospatial data
 
 ```{r}
-acci_s <- as_Spatial(acci)
-```
-
-```{r}
-acci_s
-```
-
-4.5.2 Converting the Spatial\* class into generic sp format
-
-```{r}
-acci_sp <- as(acci_s, "SpatialPoints")
-```
-
-```{r}
-acci_sp
-```
-
-Converting the generic sp format into spatstat’s ppp format
-
-```{r}
-acci_ppp <- as.ppp(acci)
-acci_ppp
-```
-
-```{r}
-summary(acci_ppp)
-```
-
-```{r}
-any(duplicated(acci_ppp))
-```
-
-1.Importing & Converting an Geospatial Data
-
-```{r}
+#| eval: false
 road <- st_read(dsn = "data/rawdata", layer = "hotosm_tha_roads_lines_shp") 
 ```
 
-#from the data infromation we can notice that it has no CRS so we need to transfrom
+From the data information, we can notice that it has no CRS so we will transform it in the later analysis
 
 ```{r}
-#road <- st_set_crs(road, 32647)
-```
-
-```{r}
+#| eval: false
 write_rds(road,"data/rds/road.rds")
 ```
 
@@ -150,54 +169,51 @@ road <- read_rds("data/rds/road.rds")
 glimpse(road)
 ```
 
-```{r}
-st_crs(road)
-```
+##### 2.2.1.1 Select target car accidence road
 
 ```{r}
-# 或者只查看唯一的 `highway` 类型
 unique(road$highway)
 
 ```
 
 ```{r}
-# 挑选出主要道路类型，例如高速公路、高等级公路等
-selected_roads <- road %>%
-  filter(highway %in% c("motorway", "trunk", "primary"))
+vehicle_type_counts <- acci %>%
+  count(vehicle_type, sort = TRUE)
 ```
+
+```{r}
+ggplot(vehicle_type_counts, aes(x = reorder(vehicle_type, n), y = n)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +  
+  labs(x = "Vehicle Type", y = "Count", title = "Number of Accidents by Vehicle Type")
+```
+
+From the bar chart,we notice that the car,truck and the motorcycle take up the most of all the car accidence,so in this case,we mainly focus on these three types of car accidence.
+
+```{r}
+selected_roads <- road %>%
+  filter(highway %in% c("motorway", "trunk", "primary","secondary"))
+```
+
+##### 2.2.1.2 Visualising the Geospatial Data
 
 ```{r}
 ggplot() +
-  geom_sf(data = selected_roads, color = "blue", size = 0.5) +
+  geom_sf(data = selected_roads, color = "black", size = 0.5) +
   labs(title = "Selected Roads (Motorway, Trunk, Primary)")
+
 ```
 
-1.3 Importing the Singapore boundary data
+### 2.2.2 Importing the boundary geospatial data
 
 ```{r}
-# 读取行政区划一级数据
 admin_level_1 <- st_read(dsn = "data/rawdata", 
                          layer = "tha_admbnda_adm1_rtsd_20220121")
-
-# 读取行政区划二级数据
 admin_level_2 <- st_read(dsn = "data/rawdata", 
                          layer = "tha_admbnda_adm2_rtsd_20220121")
-
-# 读取行政区划三级数据
-admin_level_3 <- st_read(dsn = "data/rawdata", 
-                         layer = "tha_admbnda_adm3_rtsd_20220121")
-
 ```
 
-Transform boundary data
-
-```{r}
-#admin_level_1 <- st_transform(admin_level_1, 32647)
-#admin_level_2 <- st_transform(admin_level_2, 32647)
-#admin_level_3 <- st_transform(admin_level_3, 32647)
-```
-
-Select the boundary of BMR
+#### 2.2.2.1 Select the boundary of BMR
 
 ```{r}
 admin_level_1_filtered <- admin_level_1 %>%
@@ -205,111 +221,144 @@ admin_level_1_filtered <- admin_level_1 %>%
 
 admin_level_2_filtered <- admin_level_2 %>%
   filter(ADM1_EN %in% selected_provinces)
-
-admin_level_3_filtered <- admin_level_3 %>%
-  filter(ADM1_EN %in% selected_provinces)
 ```
 
 ```{r}
 write_rds(admin_level_1_filtered,"data/rds/admin_level_1_filtered.rds")
 write_rds(admin_level_2_filtered,"data/rds/admin_level_2_filtered.rds")
-write_rds(admin_level_3_filtered,"data/rds/admin_level_3_filtered.rds")
 ```
 
 ```{r}
 admin_level_1_filtered <- read_rds("data/rds/admin_level_1_filtered.rds")
 admin_level_2_filtered <- read_rds("data/rds/admin_level_2_filtered.rds")
-admin_level_3_filtered <- read_rds("data/rds/admin_level_3_filtered.rds")
 ```
+
+#### 2.2.2.2 Visualising the Geospatial Data
 
 ```{r}
 ggplot() +
-  geom_sf(data = admin_level_1_filtered, color = "blue", size = 0.5)
+  geom_sf(data = admin_level_1_filtered, color = "black", size = 0.5)
 ```
 
-```{r}
-#admin_union <- st_union(admin_level_1_filtered)
+#### 2.2.2.3 Setting the Coordinate Reference System, CRS
 
-# 提取边界线
-#admin_boundary <- st_boundary(admin_union)
+In order to intersect with the boundary data ,we should let them in the same CRS.
+
+```{r}
+selected_roads <- st_set_crs(selected_roads, 4326)
 ```
 
+#### 2.2.2.4 Spatial Intersection
+
 ```{r}
-# 可视化边界线
-#ggplot() +
-  #geom_sf(data = admin_union, fill = "lightgrey", color = NA) +  # 原始区域
-  #geom_sf(data = admin_boundary, color = "blue") +  # 边界线
-  #labs(title = "Boundary of the Selected Region")
+road_i <- st_intersection(selected_roads, admin_level_1_filtered)
 ```
 
-```{r}
-st_crs(selected_roads) 
-st_crs(admin_boundary)
-```
+#### 2.2.2.5 Visualising Intersection Result
 
 ```{r}
-road_i <- st_intersection(road_buffer, admin_level_1_filtered)
-
-```
-
-
-```{r}
-# 3. 可视化结果
-library(ggplot2)
-
 ggplot() +
   geom_sf(data = admin_level_1_filtered, fill = "lightgrey", color = "black", size = 0.2) +
   geom_sf(data = road_i, color = "blue", size = 0.5) +
-  labs(title = "Intersection of Road Buffers and Administrative Boundaries") +
+  labs(title = "Intersection of Road and Administrative Boundaries") +
   theme_minimal()
 ```
 
+#### 2.2.2.6 Projection Transformation
+
+We need to transform the spatial data into the Thailand National Coordinate System (EPSG: 32647, UTM zone 47N)
 
 ```{r}
 road_i_t <- st_transform(road_i, crs = 32647)
 ```
 
 ```{r}
-plot(road_i_t)
-plot(acci,col='red',pch = 1)
+admin_level_1_filtered_32647 <- st_transform(admin_level_1_filtered, crs = 32647)
+
+admin_level_2_filtered_32647 <- st_transform(admin_level_2_filtered, crs = 32647)
 ```
 
+## 3. Network Spatial Point Patterns Analysis
+
+### 3.1 Visualising the Geospatial Data
 
 ```{r}
-admin_level_2_filtered_owin <- as.owin(admin_level_2_filtered)
-admin_level_2_filtered_owin
-```
-
-
-
-Point-in-polygon count
-
-#Network Spatial Point Patterns Analysis
-
-```{r}
-tm_shape(mtl_network) +  #road 的数据出现问题
+tm_shape(road_i_t) +  
   tm_lines("black") + 
   tm_shape(acci) + 
-  tm_dots("red", size = 0.2)
+  tm_dots("red", size = 0.002)
 
 ```
-
-#Network NKDE Analysis
 
 ```{r}
-lixels <- lixelize_lines(network, 
-                         700, 
-                         mindist = 375)
+tmap_mode('plot')
 ```
+
+### 3.2 Visualising Accident Density in BMR
+
+```{r}
+ggplot() +
+  stat_density_2d(data = acci, aes(x = st_coordinates(acci)[,1], y = st_coordinates(acci)[,2], fill = ..level..), geom = "polygon", color = "red") +
+  geom_sf(data = admin_level_1_filtered_32647, fill = "NA") +
+  scale_fill_viridis_c() +
+  labs(title = "Heatmap of Accident Density in BMR") +
+  theme_minimal()
+
+```
+
+We can indeed see that the areas bordering other provinces have a relatively high concentration of traffic accidents, especially in the southeastern and boundary areas of the Bangkok Metropolitan Region (BMR).
+
+### 3.3 Convert the road data to LINESTRING
+
+```{r}
+road_i_lines <- st_cast(road_i_t, "LINESTRING", do_split = TRUE)
+```
+
+```{r}
+acci_b <- acci %>%
+  dplyr::filter(province_en == "Bangkok")
+```
+
+```{r}
+Bangkok <- admin_level_1_filtered_32647 %>%
+  filter(ADM1_EN == "Bangkok") 
+```
+
+```{r}
+road_i_t_filtered <- road_i_lines %>%
+  filter(highway != "secondary")
+```
+
+```{r}
+road_b <- st_intersection(Bangkok,road_i_t_filtered)
+
+```
+
+```{r}
+road_b <- st_cast(road_b, "LINESTRING")
+```
+
+### 3.4 **Preparing the lixels objects**
+
+```{r}
+lixels <- lixelize_lines(road_b, 
+                         500, 
+                         mindist = 250)
+```
+
+### 3.4.1 **Generating line centre points**
 
 ```{r}
 samples <- lines_center(lixels) 
 ```
 
+### **3.4.2 Performing NKDE**
+
 ```{r}
-densities <- nkde(network, 
-                  events = childcare,
-                  w = rep(1, nrow(childcare)),
+#| eval: false
+densities <- nkde(road_b, 
+                  events = acci_b,
+                  w = rep(1, nrow(acci_b)),
                   samples = samples,
                   kernel_name = "quartic",
                   bw = 300, 
@@ -317,12 +366,20 @@ densities <- nkde(network,
                   method = "simple", 
                   digits = 1, 
                   tol = 1,
-                  grid_shape = c(1,1), 
+                  grid_shape = c(5,5), 
                   max_depth = 8,
                   agg = 5, 
                   sparse = TRUE,
                   verbose = FALSE)
 
+```
+
+```{r}
+saveRDS(densities, "data/rds/densities.rds")
+```
+
+```{r}
+densities <- readRDS("data/rds/densities.rds")
 ```
 
 ```{r}
@@ -336,49 +393,283 @@ samples$density <- samples$density*1000
 lixels$density <- lixels$density*1000
 ```
 
+### **3.4.3** Visualising NKDE
+
 ```{r}
-tmap_mode('view')
-tm_shape(lixels)+
-  tm_lines(col="density")+
-tm_shape(childcare)+
-  tm_dots()
+tm_shape(Bangkok) + 
+  tm_borders(col = "black", lwd = 1) +  
+  tm_text("ADM1_EN", size = 1, col = "red", shadow = TRUE) +
+tm_shape(lixels) + 
+  tm_dots(col = "density", style = "kmeans", n = 8, palette = "viridis", size = 0.02) + 
+  tm_layout(legend.outside = TRUE)
+```
+
+From the plot we found that the area of "Lat Krabang" and Prawet" show higher density than other area of the Bangkok,so we decide to find more insight of the accidence reason.
+
+#### **3.4.3.1 Select target areas**
+
+```{r}
+Bangkok_b <- admin_level_2_filtered_32647 %>%
+  dplyr::filter(ADM1_EN == "Bangkok")  %>%
+  filter(ADM2_EN=="Lat Krabang" | ADM2_EN=="Prawet") 
+```
+
+#### **3.4.3.2** Visualising **the target areas**
+
+```{r}
+tmap_mode("plot")
+tm_shape(Bangkok_b) + 
+  tm_borders(col = "black", lwd = 1) +  
+  tm_text("ADM2_EN", size = 0.4, col = "blue", shadow = TRUE) +  
+tm_shape(lixels) + 
+  tm_dots(col = "density", style = "kmeans", n = 8, palette = "viridis", size = 0.02) +  
+  tm_layout(legend.outside = TRUE)  
+```
+
+we found that both of them happen in the boundary between "Lat Krabang" and Prawet" as well as the area near the airport.
+
+#### **3.4.3.3** Computing K-fucntion Estimate
+
+```{r}
+Lat_Pra_b <- admin_level_2_filtered_32647 %>%
+  filter(ADM2_EN %in% c("Lat Krabang", "Prawet"))
+```
+
+```{r}
+acci_ppp <- as.ppp(acci)
+
+Lat_Pra_b_owin <- as.owin(Lat_Pra_b)
+
+acci_tm_ppp <- acci_ppp[Lat_Pra_b_owin]
+
+acci_tm_ppp.km <- rescale(acci_tm_ppp, 1000, "km")
+```
+
+```{r}
+K_lp = Kest(acci_tm_ppp, correction = "Ripley")
+plot(K_lp, . -r ~ r, ylab= "K(d)-r", xlab = "d(m)")
+```
+
+The black solid line is significantly higher than the red dashed line, especially at larger distances, which indicates that there is obvious spatial aggregation of accident points in this area.
+
+To confirm the observed spatial patterns above, a hypothesis test will be conducted. The hypothesis and test are as follows:
+
+Ho = The distribution of accidence at "Lat Krabang" and "Prawet" are randomly distributed.
+
+H1= The distribution of accidence at "Lat Krabang" and "Prawet" are not randomly distributed.
+
+The null hypothesis will be rejected if p-value is smaller than alpha value of 0.001.
+
+The code chunk below is used to perform the hypothesis testing.
+
+```{r}
+
+K_lp.csr <- envelope(acci_tm_ppp, Kest, nsim = 20, rank = 1, glocal=TRUE)
+
+```
+
+```{r}
+plot(K_lp.csr, . - r ~ r, xlab="d", ylab="K(d)-r")
+```
+
+The second plot adds confidence intervals and further confirms the spatial clustering by comparing the observed values ​​with the theoretical model. Therefore, the null hypothesis can be rejected, indicating that the distribution of accidents in the "Lat Krabang" and "Prawet" areas are not randomly distributed.
+
+This means that certain geographical or road features (e.g. airport sections, traffic density, inadequate traffic control measures, regional boundaries, etc.) may lead to a high frequency of accidents.
+
+#### **3.4.4** Finding the highest density
+
+```{r}
+max_density_index <- which.max(lixels$density)
+
+max_density_value <- lixels$density[max_density_index]
+
+max_density_segment <- lixels[max_density_index, ]
+```
+
+```{r}
+max_density_segment
+```
+
+```{r}
+lixels_df <- as.data.frame(lixels)
+
+lixels_df$density_category <- cut(lixels_df$density, 
+                                  breaks = c(-Inf, 0.2, 0.4, 0.6, Inf),
+                                  labels = c("0-0.2", "0.2-0.4", "0.4-0.6", ">0.6"))
+
+density_segments_list <- split(lixels_df, lixels_df$density_category)
+
+for (category in names(density_segments_list)) {
+  cat("\nDensity category:", category, "\n")
+  print(density_segments_list[[category]])
+}
+```
+
+This data frame let us more clearly to see the density of the specific road accident.
+
+```{r}
+tmap_mode("view")
+tm_shape(lixels) +
+  tm_lines(col = "density", lwd = 4) +  
+  tm_shape(max_density_segment) +      
+  tm_lines(col = "red", lwd = 30, title.col = "Max Density Segment") +  
+  tm_shape(acci) +
+  tm_dots(size = 0.0001, col = "black")  
+
+```
+
+```{r}
 tmap_mode('plot')
 ```
 
-Network Constrained G- and K-Function Analysis
+If we zoom into the the red point ,we will notice that the accidence happened from the junction between roads.
 
-Ho: The observed spatial point events (i.e distribution of accidence) are uniformly distributed over a street network in BMR.
+#### **3.4.4**.1 Visualising the highest density
 
 ```{r}
-kfun_childcare <- kfunctions(network, 
-                             childcare,
-                             start = 0, 
-                             end = 1000, 
-                             step = 50, 
-                             width = 50, 
-                             nsim = 50, 
-                             resolution = 50,
-                             verbose = FALSE, 
-                             conf_int = 0.05)
+SP_h <- admin_level_2_filtered_32647 %>%
+  filter( ADM1_EN == "Samut Prakan")
+
 ```
 
 ```{r}
-kfun_childcare$plotk
+plot(SP_h)
 ```
 
 ```{r}
-class(admin_level_2_filtered_owin)
+SP_h
+road_i_t
 ```
 
 ```{r}
-tm_shape(admin_level_2_filtered)+
-  tm_polygons() +
-tm_shape(acci) +
-  tm_dots()
+road_hd <- st_intersection(SP_h,road_i_t)
 ```
 
 ```{r}
-tm_shape(admin_level_2_filtered)+
+plot(road_hd)
+```
+
+```{r}
+acci_high1 <- acci %>%
+  filter(province_en == "Samut Prakan" & 
+         agency == "department of highways" & 
+         acc_code != "3788977" )
+
+```
+
+```{r}
+tmap_mode("plot")
+tm_shape(road_hd) +
+  tm_lines() +
+  tm_shape(acci_high1) +
+  tm_dots(col = "red", size = 0.05) 
+```
+
+We found that the high density areas are happening from airport area of the road junction.However,we did not consider of the time aspect,so in the next section,we will find more insight with the time factor.
+
+## **4** Temporal-Spatial Point Patterns Analysis
+
+### 4.1 Visualising Daily Accidents in BMR
+
+```{r}
+acci %>%
+  mutate(date = as.Date(incident_datetime)) %>%
+  group_by(date) %>%
+  summarize(accidents = n()) %>%
+  ggplot(aes(x = date, y = accidents)) +
+  geom_line(col = "steelblue") +
+  labs(title = "Daily Accidents in BMR", x = "Date", y = "Number of Accidents") +
+  theme_minimal()
+```
+
+```{r}
+ggplot(acci, aes(x = incident_datetime)) +
+  geom_histogram(binwidth = 30 * 86400,fill = "steelblue") +  
+  labs(title = "Accident Trend over Time (2019-2022)", x = "Date", y = "Number of Accidents") +
+  theme_minimal()
+```
+
+```{r}
+ggplot(acci, aes(x = year(incident_datetime))) +
+  geom_histogram(binwidth = 1,fill = "steelblue") + 
+  labs(title = "Accident Trend by Year", x = "Year", y = "Number of Accidents") +
+  theme_minimal()
+```
+
+```{r}
+ggplot(acci, aes(x = hour)) +
+  geom_histogram(binwidth = 1, fill = "steelblue", color = "white") +  
+  scale_x_continuous(breaks = 0:23) + 
+  labs(x = "Hour of the Day", y = "Number of Accidents", title = "Accidents Distribution by Hour (0-24)") +
+  theme_minimal()
+```
+
+From the four plots,we found that Before the COVID-19 outbreak, there were many road traffic accidents before 2020,and after recovering in 2022.Also ,most of the car accidence happened in the well-known peek time aound 9 am and 19 pm.
+
+```{r}
+accident_counts <- acci %>%
+  count(Month, dayofweek)
+
+# 绘制热力图
+plot_heatmap <- ggplot(accident_counts, aes(x = Month, y = dayofweek, fill = n)) +
+  geom_tile(color = "white") +
+  scale_fill_viridis_c(option = "C") +
+  labs(x = "Month", y = "Day of Week", fill = "Accident Count", title = "2019 Accident Heatmap") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+
+plot(plot_heatmap)
+
+```
+
+Here we can firstly notice that the accidence happened mostly at the end of the years and the weekend as well.
+
+Next,we will focus most in the season aspect.
+
+### 4.2 Visualising Temporal-Spatial Dynamics of Road Accidents in BMR
+
+```{r}
+#| eval: false
+library(gganimate)
+
+acci_2019 <- acci %>%
+  filter(Year == 2019 &  Month_num == 4)  
+
+p <- ggplot() +
+  geom_sf(data = admin_level_1_filtered_32647, fill = "gray90") + 
+  geom_point(data = acci_2019, aes(x = st_coordinates(acci_2019)[,1], y = st_coordinates(acci_2019)[,2], color = province_en), size = 3) +
+  labs(title = "Spatio-Temporal Dynamics of Road Accidents in BMR (2019)",
+       subtitle = 'Date: {frame_time}') +
+  transition_time(acci_2019$incident_datetime) +  
+  ease_aes('linear') + 
+  theme_minimal()
+
+anim <- animate(p, duration = 80, fps = 5)  
+
+anim_save("road_accidents_bmr_2019.gif", animation = anim)
+
+```
+
+```{r}
+knitr::include_graphics("road_accidents_bmr_2019.gif")
+```
+
+As time goes by, we also find that accidents mostly occur at the border.
+
+### 4.3 **Visuaising geographic distribution of accidence by month**
+
+```{r}
+admin_level_1_filtered_owin <- as.owin(admin_level_1_filtered_32647)
+admin_level_1_filtered_owin
+```
+
+```{r}
+class(admin_level_1_filtered_owin)
+```
+
+```{r}
+tmap_mode("plot")
+tm_shape(admin_level_1_filtered_32647)+
   tm_polygons() +
 tm_shape(acci) +
   tm_dots(size = 0.1) +
@@ -386,6 +677,10 @@ tm_facets(by="Month_fac",
             free.coords=FALSE, 
             drop.units = TRUE)
 ```
+
+The plot indicates that January, April, and December show a higher concentration of road accidents in the Bangkok Metropolitan Region (BMR) compared to other months. This suggests that these months may experience higher traffic incidents, potentially due to specific factors like holiday seasons, or increased travel during these times. Further analysis may be needed to explore the causes behind this trend and whether interventions during these months could help reduce the number of accidents.
+
+### 4.3.1 Computing STKDE by Month
 
 ```{r}
 acci_month <- acci %>% 
@@ -398,10 +693,6 @@ acci_month_ppp
 ```
 
 ```{r}
-summary(acci_month_ppp)
-```
-
-```{r}
 any(duplicated(acci_month_ppp))
 ```
 
@@ -409,7 +700,7 @@ any(duplicated(acci_month_ppp))
 acci_month_ppp_jit <- rjitter(acci_month_ppp, 
                              retry=TRUE, 
                              nsim=1, 
-                             drop=TRUE)
+                             drop=TRUE) 
 ```
 
 ```{r}
@@ -417,20 +708,11 @@ any(duplicated(acci_month_ppp_jit))
 ```
 
 ```{r}
-acci_month_owin <- acci_month_ppp[admin_level_2_filtered_owin]
+acci_month_owin <- acci_month_ppp_jit[admin_level_1_filtered_owin]
 summary(acci_month_owin)
 ```
 
 ```{r}
-plot(acci_month_owin)
-```
-
-```{r}
-st_crs(admin_level_2_filtered)
-```
-
-```{r}
-library()
 st_kde <- spattemp.density(acci_month_owin)
 summary(st_kde)
 ```
@@ -444,62 +726,80 @@ for(i in tims){
        fix.range=TRUE, 
        main=paste("KDE at month",i))
 }
+
+```
+
+The accident hotspots are more densely distributed in Jan and Dec , especially in the southern and central regions, indicating that traffic accidents in different months have obvious spatial and temporal dynamics. .
+
+```{r}
+start <- as.POSIXct("2019/01/01", format = "%Y/%m/%d")
+acci$Time <- difftime(acci$incident_datetime, start, units = "days")
+acci$Time <- as.numeric(acci$Time)
+
+months <- as.character(1:12)
+months <- ifelse(nchar(months) == 1, paste0("0", months), months)
+months_starts_labs <- paste("2019/", months, "/01", sep = "")
+months_starts_num <- as.POSIXct(months_starts_labs, format = "%Y/%m/%d")
+months_starts_num <- difftime(months_starts_num, start, units = "days")
+months_starts_num <- as.numeric(months_starts_num)
+months_starts_labs <- gsub("2019/", "", months_starts_labs, fixed = TRUE)
+```
+
+The time difference from January 1, 2019 is used to calculate and mark the relative time (in days) when the accident occurred. This operation prepares for subsequent time series analysis or visualization, so that the accident data can be displayed on a timeline.
+
+### 4.4 Spatial point pattern analysis by hours
+
+We will perform analysis on traffic accident data (acci) ,especially operating on the hour when the accident occurred (hour)
+
+```{r}
+acci_hour <- acci %>% 
+  select(hour)
 ```
 
 ```{r}
-# 假设 tims 代表一周的天数（星期一到星期日，1代表星期日，7代表星期六）
-tims <- c(1, 2, 3, 4, 5, 6, 7)  # 表示一周7天
-
-# 调整图形布局
-par(mfcol=c(2, 4))  # 设置为2行4列布局来展示每一天的KDE
-
-# 使用 for 循环遍历星期几并绘制 KDE
-for(i in tims){ 
-  plot(st_kde, i, 
-       override.par=FALSE, 
-       fix.range=TRUE, 
-       main=paste("KDE on weekday", i))  # 显示星期几的KDE
-}
-```
-
-2.Network Spatial Point Patterns Analysis
-
-```{r}
-selected_types <- c("motorway", "motorway_link", "trunk", "trunk_link", 
-                    "primary", "primary_link", "secondary", "secondary_link", 
-                    "tertiary", "residential", "living_street", "service", 
-                    "unclassified", "cycleway", "footway", "pedestrian")
-road_filtered <- road %>%
-  filter(highway %in% selected_types) 
-
+acci_hour_ppp <- as.ppp(acci_hour)
+acci_hour_ppp
 ```
 
 ```{r}
-st_crs(road_filtered)
+summary(acci_hour_ppp)
 ```
 
 ```{r}
-st_crs(admin_level_2_filtered)
+any(duplicated(acci_hour_ppp))
+```
+
+We found that there is duplicate from the data set ,so next we conduct the method to delete them.
+
+```{r}
+acci_hour_ppp_jit <- rjitter(acci_hour_ppp, 
+                             retry=TRUE, 
+                             nsim=1, 
+                             drop=TRUE) 
 ```
 
 ```{r}
-#road_adm2f <- st_join(road,admin_level_2_filtered, join = st_intersects)
+any(duplicated(acci_hour_ppp_jit))
 ```
 
 ```{r}
-road_within_selected_areas <- st_join(road_filtered, admin_level_2_filtered, join = st_within)
+any(duplicated(acci))
 ```
 
 ```{r}
-road_adm2f <- st_join(road_filtered, admin_level_2_filtered, join = st_intersects)
+acci_hour_owin <- acci_hour_ppp[admin_level_1_filtered_owin]
+summary(acci_hour_owin)
 ```
 
 ```{r}
-plot(st_geometry(road_adm2f))
-plot(acci,add=T,col='red',pch = 19)
+class(acci_hour_ppp_jit)
 ```
 
-6.9.1 Creating ppp object
+```{r}
+plot(acci_hour_owin)
+```
+
+### 4.5 Computing STKDE by Day
 
 ```{r}
 acci_yday_ppp <- acci %>% 
@@ -508,67 +808,294 @@ acci_yday_ppp <- acci %>%
 ```
 
 ```{r}
-acci_yday_owin <- acci_yday_ppp[admin_level_2_filtered_owin]
+acci_yday_owin <- acci_yday_ppp[admin_level_1_filtered_owin]
 summary(acci_yday_owin)
 ```
 
 ```{r}
-# 假设 fire_month_owin 是点模式数据，月份信息存储在 marks 中
-# 创建颜色向量，为每个月分配不同的颜色
-month_colors <- colorRampPalette(c("blue", "green", "yellow", "red"))(12)
-
-# 绘制带有颜色区分的图
-plot(acci_month_owin, cols = month_colors[as.numeric(marks(acci_month_owin))],
-     main = "Accidents by Month", legend = TRUE)
-
+any(duplicated(acci_yday_ppp))
 ```
 
 ```{r}
-acci_wday_owin <- acci_wday_ppp[admin_level_2_filtered_owin]
-summary(acci_wday_owin)
+acci_yday_ppp_jit <- rjitter(acci_yday_ppp, 
+                             retry=TRUE, 
+                             nsim=1, 
+                             drop=TRUE) 
 ```
 
 ```{r}
-# 假设 fire_month_owin 是点模式数据，月份信息存储在 marks 中
-# 创建颜色向量，为每个月分配不同的颜色
-week_colors <- colorRampPalette(c("blue", "green", "yellow", "red"))(12)
+any(duplicated(acci_yday_ppp_jit))
+```
 
-# 绘制带有颜色区分的图
-plot(acci_week_owin, cols = week_colors[as.numeric(marks(acci_week_owin))],
-     main = "Accidents by Month", legend = TRUE)
+The set contains a flat point pattern of 12,986 markers with an average intensity of 1.69e-06, indicating that the points are distributed at a low density per square unit. The pattern contains duplicate points ("Pattern contains duplicated points"), which indicates that some incidents occurred at the same or very close geographic locations. In addition, the polygonal bounding area of the window covers 76,689,000 square units.
 
+```{r}
+acci_yday_owin2 <- acci_yday_ppp_jit[admin_level_1_filtered_owin]
+summary(acci_yday_owin2)
+```
+
+We can see that the number of incident points in the processed point pattern data (Marked Planar Point Pattern) is 12986 and 12976 respectively, showing the average intensity (incident point density per square unit). The polygonal boundary of the window and the related area information are also explained in the output. The reduction in the number of points in the second result may be due to the application of the rjitter function.
+
+```{r}
+kde_yday <- spattemp.density(
+  acci_yday_owin2)
+summary(kde_yday)
 ```
 
 ```{r}
-# 使用边界数据（如Bangkok Metropolitan Region）与道路数据进行空间连接
-road_bmr <- st_join(road, admin_level_1_filtered)
+#| eval: false
+plot(kde_yday)
+```
 
-# 只保留与目标区域（如BMR）相交的道路
-road_bmr <- road_bmr[!is.na(road_bmr$ADM1_EN), ]  # ADM1_EN是省份的名称列
+### 4.6 Temporal Network Spatial Point Patterns Analysis
 
-# 绘制结果
-plot(st_geometry(road_bmr), col = "blue", main = "BMR")
+#### 4.6.1 Kernel density estimation is performed for each year
+
+```{r}
+time_kernel_values <- acci %>%
+  group_by(Year) %>%
+  do({
+    data = .
+    samples <- seq(0, max(data$Time), 0.5)
+    data.frame(
+      bw_10 = tkde(data$Time, w = rep(1, nrow(data)), samples = samples, bw = 10, kernel_name = "quartic"),
+      bw_20 = tkde(data$Time, w = rep(1, nrow(data)), samples = samples, bw = 20, kernel_name = "quartic"),
+      bw_30 = tkde(data$Time, w = rep(1, nrow(data)), samples = samples, bw = 30, kernel_name = "quartic"),
+      bw_40 = tkde(data$Time, w = rep(1, nrow(data)), samples = samples, bw = 40, kernel_name = "quartic"),
+      bw_50 = tkde(data$Time, w = rep(1, nrow(data)), samples = samples, bw = 50, kernel_name = "quartic"),
+      bw_60 = tkde(data$Time, w = rep(1, nrow(data)), samples = samples, bw = 60, kernel_name = "quartic"),
+      time = samples,
+      Year = unique(data$Year)
+    )
+  })
+
+df_time <- melt(time_kernel_values, id.vars = c("time", "Year"))
+df_time$variable <- as.factor(df_time$variable)
+
+selected_months <- c("01/01", "04/01", "07/01", "10/01", "12/01")
+selected_months_num <- months_starts_num[months_starts_labs %in% selected_months]
+selected_months_labs <- months_starts_labs[months_starts_labs %in% selected_months]
+
+ggplot(data = df_time) + 
+  geom_line(aes(x = time, y = value, color = variable)) +  
+  scale_x_continuous(breaks = selected_months_num, labels = selected_months_labs) +
+  facet_wrap(~ Year, ncol = 1, scales = "free_y") +  
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),  
+    axis.text.y = element_text(size = 8)  
+  ) +
+  labs(x = "Time (Months)", y = "Density", title = "Time Kernel Density Estimation for Each Year") +
+  scale_color_manual(values = c("blue", "green", "red", "purple", "orange", "brown"), 
+                     name = "Bandwidths", 
+                     labels = c("bw_10", "bw_20", "bw_30", "bw_40", "bw_50", "bw_60"))
+
+```
+
+It is not surprising to observe that most of the accidents occur during spring in April and winter in December.
+
+### ***Continue the previous max density area,we add the time into analysis,which we select the April and the December.***
+
+H0:In the street network of amut Prakan, the occurrences of traffic accidents are completely random, meaning they exhibit a uniform distribution that follows the Complete Spatial Randomness (CSR) hypothesis.
+
+H1:In the street network of amut Prakan, the occurrences of traffic accidents are not completely random, meaning they do not follow the Complete Spatial Randomness (CSR) hypothesis.
+
+```{r}
+acci_high <- acci %>%
+  filter(province_en == "Samut Prakan" & 
+         agency == "department of highways" & 
+         acc_code != "3788977" &
+         (Month_num == 4 | Month_num == 12))  
+```
+
+```{r}
+road_hd <- st_cast(road_hd, "LINESTRING")
+acci_high <- st_cast(acci_high, "POINT")
+```
+
+```{r}
+acci_high <- acci_high[!duplicated(st_coordinates(acci_high)), ]
+```
+
+```{r}
+#| eval: false
+kfun_acci_max_density <- kfunctions(
+  road_hd, 
+  acci_high,  
+  start = 0, 
+  end = 5000,  
+  step = 200,  
+  width = 50, 
+  nsim = 20,  
+  resolution = 20,  
+  verbose = FALSE, 
+  conf_int = 0.05, 
+  agg = 100000  
+)
+
+
+
 
 ```
 
 ```{r}
 #| eval: false
-ggplot() +
-  geom_sf(data = admin_level_1, fill = NA, color = "red") +   # 第1级边界
-  geom_sf(data = admin_level_2, fill = NA, color = "blue") +  # 第2级边界
-  #geom_sf(data = admin_level_3, fill = NA, color = "green") + # 第3级边界
-  theme_minimal() +
-  labs(title = "Thailand Administrative Boundaries")
+saveRDS(kfun_acci_max_density, "data/rds/kfun_acci_max_density.rds")
 ```
 
 ```{r}
-ggplot() +
-  geom_sf(data = admin_level_1_filtered, aes(fill = ifelse(ADM1_EN == "Bangkok", "Bangkok", "Other")), color = "black") +  # 设置不同的填充颜色
-  geom_sf_text(data = admin_level_1_filtered, aes(label = ADM1_EN), size = 3, color = "black") +  # 添加省份名称标签
-  scale_fill_manual(values = c("Bangkok" = "yellow", "Other" = "grey")) +  # 设置曼谷为黄色，其他为灰色
-  theme_minimal() +
-  labs(title = "Bangkok Metropolitan Region", fill = "Region")  # 添加图例标题
+kfun_acci_max_density <- readRDS("data/rds/kfun_acci_max_density.rds")
+```
+
+
+```{r}
+kfun_acci_max_density$plotk
+```
+
+The blue line in the figure is significantly higher than the simulated value, indicating that traffic accident points are clustered in space rather than randomly distributed.
+
+### 4.7 Combine All
+
+We can now estimate the kernel density in both space and time for the Bangkok where has more accidence.
+
+```{r}
+acci_lp <- acci %>%
+  dplyr::filter(province_en == "Bangkok" & Year == 2019 & Month_num == 4 )
+```
+
+```{r}
+road_b <-road_b %>%
+  filter(highway %in% c("motorway"))
+```
+
+```{r}
+plot(road_b)
+```
+
+```{r}
+library(knitr)
+cv_scores_adpt_cont <- bw_tnkde_cv_likelihood_calc(
+  bws_net = seq(200,1100,100),
+  bws_time = seq(10,70,10),
+  lines = road_b,
+  events = acci_lp,
+  time_field = "Time",
+  adaptive = TRUE,
+  trim_net_bws = seq(200,1100,100)*2,
+  trim_time_bws = seq(10,70,10)*2,
+  w = rep(1, nrow(acci_lp)),
+  kernel_name = "quartic",
+  method = "discontinuous",
+  diggle_correction = FALSE,
+  study_area = NULL,
+  max_depth = 10,
+  digits = 2,
+  tol = 0.1,
+  agg = 10,
+  sparse=TRUE,
+  grid_shape=c(1,1),
+  sub_sample=1,
+  verbose = FALSE,
+  check = TRUE)
+kable(cv_scores_adpt_cont)
 
 ```
 
-#Point-in-polygon count 1.9.2 Point-in-polygon count，可以在边界里面分析哪个地方的犯罪率最高
+According to the “leave one out cross validation” method, the optimal set of bandwidths is 600 metres and 70 days.
+
+```{r}
+# choosing sample in times 
+sample_time <- seq(0, max(acci_lp$Time), 1)
+
+# calculating densities
+tnkde_densities <- tnkde(lines = road_b,
+                   events = acci_lp,
+                   time_field = "Time",
+                   w = rep(1, nrow(acci_lp)), 
+                   samples_loc = samples,
+                   samples_time = sample_time, 
+                   kernel_name = "quartic",
+                   bw_net = 1100, bw_time = 20,
+                   adaptive = TRUE,
+                   trim_bw_net = 1500,
+                   trim_bw_time = 100,
+                   method = "discontinuous",
+                   div = "bw", max_depth = 10,
+                   digits = 2, tol = 0.01,
+                   agg = 10, grid_shape = c(1,1), 
+                   verbose  = FALSE)
+
+
+```
+
+
+```{r}
+#| eval: false
+saveRDS(tnkde_densities, "data/rds/tnkde_densitiesy.rds")
+```
+
+```{r}
+tnkde_densities <- readRDS("data/rds/tnkde_densitiesy.rds")
+```
+
+```{r}
+# creating a color palette for all the densities
+all_densities <- c(tnkde_densities$k)
+color_breaks <- classIntervals(all_densities, n = 10, style = "kmeans")
+```
+
+```{r}
+#| eval: false
+# Generate a map for each sampling time point
+all_maps <- lapply(1:ncol(tnkde_densities$k), function(i){
+  time <- sample_time[[i]]
+  date <- as.Date(start) + time
+  
+  samples$density <- tnkde_densities$k[,i]
+  
+map1 <-  
+    tm_shape(Bangkok) +  
+    tm_borders(col = "black", lwd = 1, alpha = 0.5) + 
+    tm_shape(samples) + 
+    tm_dots(col = "density", size = 0.008, 
+            breaks = color_breaks$brks, palette = viridis(10)) + 
+    tm_layout(legend.show = FALSE, main.title = as.character(date), main.title.size = 0.5)
+
+return(map1)
+})
+```
+
+```{r}
+#| eval: false
+tmap_animation(all_maps, filename = "images/animated_map.gif", 
+               width = 1000, height = 1000, dpi = 300, delay = 50)
+```
+
+```{r}
+knitr::include_graphics("images/animated_map.gif")
+```
+
+Now we can visualize the dynamic patterns of accidents across different years, days, and hours.
+
+## 5 Conclusion
+
+Using Network Spatial Point Patterns Analysis (NSPPA) and Temporal Network Spatial Point Patterns Analysis (TNSPPA) methods to study the reasons behind Bangkok's car accidents, we can conclude the following:
+
+Accident Clusters: There is significant spatial clustering of accidents, especially in key road intersections and major highways in Bangkok.
+
+Temporal Variations: The temporal analysis reveals that accident rates are higher during specific months (e.g., January and April), likely due to increased traffic during holidays.
+
+KDE Insights: Kernel Density Estimation shows shifting accident hotspots over time, reflecting traffic flow changes and potential urban development impacts.
+
+Seasonal Factors: Changes in accident frequency could be linked to seasonal weather variations,holidays like "Songkran Festival" in April or "Christmas" in December or traffic regulations during different times of the year.
+
+These analyses suggest targeted interventions could be developed to address the specific high-risk areas and periods to reduce accident rates.
+
+## 6 Reference
+
+1.Tin Seong Kam.[Spatial Point Patterns Analysis](https://r4gdsa.netlify.app/chap04) 4.5.6.7
+
+2.[Network k Functions](https://jeremygelb.github.io/spNetwork/articles/KNetworkFunctions.html)
+
+3.[Network Kernel Density Estimate](https://jeremygelb.github.io/spNetwork/articles/NKDE.html)
+
+4.[Temporal Network Kernel Density Estimate](https://jeremygelb.github.io/spNetwork/articles/TNKDE.html)
