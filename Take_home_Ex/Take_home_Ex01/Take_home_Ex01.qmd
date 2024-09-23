@@ -355,7 +355,6 @@ samples <- lines_center(lixels)
 ### **3.4.2 Performing NKDE**
 
 ```{r}
-#| eval: false
 densities <- nkde(road_b, 
                   events = acci_b,
                   w = rep(1, nrow(acci_b)),
@@ -629,7 +628,7 @@ Next,we will focus most in the season aspect.
 ### 4.2 Visualising Temporal-Spatial Dynamics of Road Accidents in BMR
 
 ```{r}
-#| eval: false
+
 library(gganimate)
 
 acci_2019 <- acci %>%
@@ -917,7 +916,7 @@ acci_high <- acci_high[!duplicated(st_coordinates(acci_high)), ]
 ```
 
 ```{r}
-#| eval: false
+
 kfun_acci_max_density <- kfunctions(
   road_hd, 
   acci_high,  
@@ -939,11 +938,11 @@ kfun_acci_max_density <- kfunctions(
 
 ```{r}
 #| eval: false
-saveRDS(kfun_acci_max_density, "data/rds/kfun_acci_max_density.rds")
+#saveRDS(kfun_acci_max_density, "data/rds/kfun_acci_max_density.rds")
 ```
 
 ```{r}
-kfun_acci_max_density <- readRDS("data/rds/kfun_acci_max_density.rds")
+#kfun_acci_max_density <- readRDS("data/rds/kfun_acci_max_density.rds")
 ```
 
 
@@ -1030,11 +1029,11 @@ tnkde_densities <- tnkde(lines = road_b,
 
 ```{r}
 #| eval: false
-saveRDS(tnkde_densities, "data/rds/tnkde_densitiesy.rds")
+#saveRDS(tnkde_densities, "data/rds/tnkde_densitiesy.rds")
 ```
 
 ```{r}
-tnkde_densities <- readRDS("data/rds/tnkde_densitiesy.rds")
+#tnkde_densities <- readRDS("data/rds/tnkde_densitiesy.rds")
 ```
 
 ```{r}
@@ -1044,7 +1043,6 @@ color_breaks <- classIntervals(all_densities, n = 10, style = "kmeans")
 ```
 
 ```{r}
-#| eval: false
 # Generate a map for each sampling time point
 all_maps <- lapply(1:ncol(tnkde_densities$k), function(i){
   time <- sample_time[[i]]
@@ -1065,7 +1063,6 @@ return(map1)
 ```
 
 ```{r}
-#| eval: false
 tmap_animation(all_maps, filename = "images/animated_map.gif", 
                width = 1000, height = 1000, dpi = 300, delay = 50)
 ```
