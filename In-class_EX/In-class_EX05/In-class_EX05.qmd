@@ -11,7 +11,7 @@ execute:
 ---
 
 ```{r}
-pacman::p_load(sf, spdep, tmap, tidyverse)
+pacman::p_load(sf,spdep,tmap,tidyverse)
 ```
 
 ```{r}
@@ -29,7 +29,7 @@ hunan <- left_join(hunan,hunan2012) %>%
 ```
 
 ```{r}
-##| eval: false
+#| eval: false
 wm_q<- hunan_GDPPC %>%
   mutate(nb=st_contiguity(geometry),
          wt=st_weights(nb,
@@ -40,8 +40,9 @@ wm_q<- hunan_GDPPC %>%
 mutate:create nb:neighbour list wt:
 
 ```{r}
-##| eval: false
-moranI<- global_moran(km_qGDPPC,
+#| eval: false
+library(spdep)
+moranI<- global_moran(km_q$GDPPC,
                       wm_q$nb,
                       wm_q$wt) 
 glimpse(moranI)
@@ -50,11 +51,12 @@ glimpse(moranI)
 p-value and variance value
 
 ```{r}
+#| eval: false
 set.seed(1234)
 ```
 
 ```{r}
-##| eval: false
+#| eval: false
 global_moran_perm <- (wm_q$GDPPC,
                       wm_q$nb,
                       wm_q$wt, 
@@ -94,6 +96,7 @@ compare ii with p_ii_sim
 use + - colour to look at the plot
 
 ```{r}
+#| eval: false
 tmap_mode("plot")
 tm_shape(lisa) +
   tm_fill("p_li_sim") +
@@ -103,6 +106,7 @@ tm_shape(lisa) +
 ```
 
 ```{r}
+#| eval: false
 tmap_mode("plot")
 tm_shape(lisa) +
   tm_fill("Ii") +
@@ -113,13 +117,24 @@ tm_shape(lisa) +
     main.title.size = 2
   )
 
-
 ```
 
 visualising lisa map
 
 ```{r}
+#| eval: false
+HCSA_sig <- HCSA %>%
+  filter(p_sim < 0.05)
 
+tmap_mode("plot") 
+
+tm_shape(HCSA) +
+  tm_polygons() +
+  tm_borders(alpha = 0.5) +
+  
+tm_shape(HCSA_sig) +
+  tm_fill("cluster") + #
+  tm_borders(alpha = 0.4)
 ```
 
 use some statistic significant p_ii \<0.5
