@@ -149,7 +149,7 @@ tmap_mode('plot')
 
 #### 2.2.1 Importing the geospatial data
 
-```{r}
+```{r, cache=TRUE}
 #| eval: false
 road <- st_read(dsn = "data/rawdata", layer = "hotosm_tha_roads_lines_shp") 
 ```
@@ -329,12 +329,12 @@ road_i_t_filtered <- road_i_lines %>%
   filter(highway != "secondary")
 ```
 
-```{r}
+```{r, cache=TRUE}
 road_b <- st_intersection(Bangkok,road_i_t_filtered)
 
 ```
 
-```{r}
+```{r, cache=TRUE}
 road_b <- st_cast(road_b, "LINESTRING")
 ```
 
@@ -348,13 +348,13 @@ lixels <- lixelize_lines(road_b,
 
 ### 3.4.1 **Generating line centre points**
 
-```{r}
+```{r, cache=TRUE}
 samples <- lines_center(lixels) 
 ```
 
 ### **3.4.2 Performing NKDE**
 
-```{r}
+```{r, cache=TRUE}
 densities <- nkde(road_b, 
                   events = acci_b,
                   w = rep(1, nrow(acci_b)),
@@ -373,15 +373,15 @@ densities <- nkde(road_b,
 
 ```
 
-```{r}
+```{r, cache=TRUE}
 saveRDS(densities, "data/rds/densities.rds")
 ```
 
-```{r}
+```{r, cache=TRUE}
 densities <- readRDS("data/rds/densities.rds")
 ```
 
-```{r}
+```{r, cache=TRUE}
 samples$density <- densities
 lixels$density <- densities
 ```
@@ -461,13 +461,13 @@ The null hypothesis will be rejected if p-value is smaller than alpha value of 0
 
 The code chunk below is used to perform the hypothesis testing.
 
-```{r}
+```{r, cache=TRUE}
 
 K_lp.csr <- envelope(acci_tm_ppp, Kest, nsim = 20, rank = 1, glocal=TRUE)
 
 ```
 
-```{r}
+```{r, cache=TRUE}
 plot(K_lp.csr, . - r ~ r, xlab="d", ylab="K(d)-r")
 ```
 
@@ -540,7 +540,7 @@ SP_h
 road_i_t
 ```
 
-```{r}
+```{r, cache=TRUE}
 road_hd <- st_intersection(SP_h,road_i_t)
 ```
 
@@ -609,7 +609,6 @@ From the four plots,we found that Before the COVID-19 outbreak, there were many 
 accident_counts <- acci %>%
   count(Month, dayofweek)
 
-# 绘制热力图
 plot_heatmap <- ggplot(accident_counts, aes(x = Month, y = dayofweek, fill = n)) +
   geom_tile(color = "white") +
   scale_fill_viridis_c(option = "C") +
@@ -627,7 +626,7 @@ Next,we will focus most in the season aspect.
 
 ### 4.2 Visualising Temporal-Spatial Dynamics of Road Accidents in BMR
 
-```{r}
+```{r, cache=TRUE}
 
 library(gganimate)
 
@@ -850,7 +849,7 @@ plot(kde_yday)
 
 #### 4.6.1 Kernel density estimation is performed for each year
 
-```{r}
+```{r, cache=TRUE}
 time_kernel_values <- acci %>%
   group_by(Year) %>%
   do({
@@ -915,8 +914,7 @@ acci_high <- st_cast(acci_high, "POINT")
 acci_high <- acci_high[!duplicated(st_coordinates(acci_high)), ]
 ```
 
-```{r}
-
+```{r, cache=TRUE}
 kfun_acci_max_density <- kfunctions(
   road_hd, 
   acci_high,  
@@ -945,7 +943,6 @@ kfun_acci_max_density <- kfunctions(
 #kfun_acci_max_density <- readRDS("data/rds/kfun_acci_max_density.rds")
 ```
 
-
 ```{r}
 kfun_acci_max_density$plotk
 ```
@@ -970,7 +967,7 @@ road_b <-road_b %>%
 plot(road_b)
 ```
 
-```{r}
+```{r, cache=TRUE}
 library(knitr)
 cv_scores_adpt_cont <- bw_tnkde_cv_likelihood_calc(
   bws_net = seq(200,1100,100),
@@ -1025,7 +1022,6 @@ tnkde_densities <- tnkde(lines = road_b,
 
 
 ```
-
 
 ```{r}
 #| eval: false

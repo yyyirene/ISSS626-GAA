@@ -37,10 +37,7 @@ wm_q<- hunan_GDPPC %>%
          .before=1)
 ```
 
-
-mutate:create 
-nb:neighbour list 
-wt:
+mutate:create nb:neighbour list wt:
 
 ```{r}
 ##| eval: false
@@ -56,7 +53,6 @@ p-value and variance value
 set.seed(1234)
 ```
 
-
 ```{r}
 ##| eval: false
 global_moran_perm <- (wm_q$GDPPC,
@@ -66,10 +62,11 @@ global_moran_perm <- (wm_q$GDPPC,
 
  
 ```
+
 start with 99
- 
+
 test
- 
+
 local moran's I
 
 ```{r}
@@ -84,19 +81,17 @@ lisa <- wm_q %>%
 
 pay attention to 10 local measure
 
-mean use 
+mean use
 
-another is median  already have hh hl
+another is median already have hh hl
 
 pysal
 
 p_ii_sim look at this one
 
-
 compare ii with p_ii_sim
 
 use + - colour to look at the plot
-
 
 ```{r}
 tmap_mode("plot")
@@ -122,21 +117,17 @@ tm_shape(lisa) +
 ```
 
 visualising lisa map
+
 ```{r}
 
 ```
 
-use some statistic significant
-p_ii <0.5
+use some statistic significant p_ii \<0.5
 
-
-ll 
+ll
 
 ll significant so is cluster
 
-gi*
-view(hcsa)
+gi\* view(hcsa)
 
-inclass show a new way to do it 
-
-
+inclass show a new way to do it
