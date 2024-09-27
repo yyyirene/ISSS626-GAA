@@ -137,7 +137,7 @@ tm_shape(hanan_gwstat) +
             frame = TRUE)
 ```
 
-## 3.Geographically Weighted Summary Statistics with fixed 
+## 3.Geographically Weighted Summary Statistics with fixed
 
 ### 3.1Determine fixed bandwidth
 

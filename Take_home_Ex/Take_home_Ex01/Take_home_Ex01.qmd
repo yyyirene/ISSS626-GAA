@@ -132,7 +132,7 @@ acci <- read_rds("data/rds/acci.rds")
 glimpse(acci)
 ```
 
-Notice: Table above shows the content of acci, notice that a new column called geometry has been added into the data frame. On the other hand, the longitude and latitude columns have been dropped from the data frame.
+Notice: Table above shows the content of acci, a new column called geometry has been added into the data frame. On the other hand, the longitude and latitude columns have been dropped from the data frame.
 
 #### 2.1.3 Mapping the spatial data set
 
@@ -303,9 +303,9 @@ ggplot() +
 
 We can indeed see that the areas bordering other provinces have a relatively high concentration of traffic accidents, especially in the southeastern and boundary areas of the Bangkok Metropolitan Region (BMR).
 
-#### **3.4.3.1 Select target areas**
+### **3.4 Select target areas**
 
-### 3.3 Convert the road data to LINESTRING
+#### 3.4.1 Convert the road data to LINESTRING
 
 ```{r}
 road_i_lines <- st_cast(road_i_t, "LINESTRING", do_split = TRUE)
@@ -322,7 +322,6 @@ Bangkok_b <- admin_level_2_filtered_32647 %>%
   filter(ADM2_EN=="Lat Krabang" | ADM2_EN=="Prawet") 
 ```
 
-
 ```{r}
 acci_b <- acci %>%
   dplyr::filter(province_en == "Bangkok")
@@ -337,7 +336,6 @@ road_i_t_filtered2 <- road_i_lines %>%
 plot(road_i_t_filtered2)
 ```
 
-
 ```{r, cache=TRUE}
 road_b <- st_intersection(Bangkok_b,road_i_t_filtered2)
 ```
@@ -346,7 +344,7 @@ road_b <- st_intersection(Bangkok_b,road_i_t_filtered2)
 road_b <- st_cast(road_b, "LINESTRING")
 ```
 
-### 3.4 **Preparing the lixels objects**
+### 3.5 **Preparing the lixels objects**
 
 ```{r, cache=TRUE}
 lixels <- lixelize_lines(road_b, 
@@ -354,13 +352,13 @@ lixels <- lixelize_lines(road_b,
                          mindist = 250)
 ```
 
-### 3.4.1 **Generating line centre points**
+#### 3.5.1 **Generating line centre points**
 
 ```{r, cache=TRUE}
 samples <- lines_center(lixels) 
 ```
 
-### **3.4.2 Performing NKDE**
+#### **3.5.2 Performing NKDE**
 
 ```{r, cache=TRUE}
 #| eval: false
@@ -382,7 +380,6 @@ densities <- nkde(road_b,
 
 ```
 
-
 ```{r, cache=TRUE}
 #| eval: false
 saveRDS(densities, "data/rds/densities.rds")
@@ -403,7 +400,7 @@ samples$density <- samples$density*1000
 lixels$density <- lixels$density*1000
 ```
 
-### **3.4.3** Visualising target areas** NKDE
+#### **3.5.3** Visualising target areas NKDE
 
 ```{r}
 tmap_mode("plot")
@@ -414,11 +411,12 @@ tm_shape(lixels) +
   tm_dots(col = "density", style = "kmeans", n = 8, palette = "viridis", size = 0.02) + 
   tm_layout(legend.outside = TRUE)
 ```
+
 From the plot we found that the area of "Lat Krabang" and Prawet" show higher density than other area of the Bangkok,so we decide to find more insight of the accidence reason.
 
 we also found that both of them happen in the boundary between "Lat Krabang" and Prawet" as well as the area near the airport.
 
-#### **3.4.3.3** Computing K-fucntion Estimate
+#### **3.5.4** Computing K-fucntion Estimate
 
 ```{r}
 Lat_b <- admin_level_2_filtered_32647 %>%
@@ -487,7 +485,7 @@ The second plot adds confidence intervals and further confirms the spatial clust
 
 This means that certain geographical or road features (e.g. airport sections, traffic density, inadequate traffic control measures, regional boundaries, etc.) may lead to a high frequency of accidents.
 
-#### **3.4.4** Finding the highest density
+### **3.6** Finding the highest density
 
 ```{r, cache=TRUE}
 max_density_index <- which.max(lixels$density)
@@ -504,10 +502,10 @@ max_density_segment <- lixels[max_density_index, ]
 ```{r}
 max_density_segment
 ```
+
 From the information provided,we can notice that the highest density area happened in the Prawet.
 
-
-#### **3.4.4**.1 Visualising the highest density
+#### **3.6.1** Visualising the highest density
 
 ```{r}
 p_h <- admin_level_2_filtered_32647 %>%
@@ -524,16 +522,13 @@ road_i_t_filtered3 <- road_i_lines %>%
   filter(highway %in% c("motorway"))
 ```
 
-
 ```{r, cache=TRUE}
 road_hd <- st_intersection(p_h,road_i_t_filtered3)
 ```
 
-
 ```{r}
 plot(road_hd)
 ```
-
 
 ```{r}
 acci_high1 <- acci %>%
@@ -545,7 +540,6 @@ road_buffer <- st_buffer(road_hd, dist = 50)
 
 acci_road_intersection <- st_intersection(acci_high1, road_buffer)
 ```
-
 
 ```{r}
 tmap_mode("plot")
@@ -594,7 +588,7 @@ ggplot(acci_high1, aes(x = hour)) +
   theme_minimal()
 ```
 
-From the four plots,we found that Before the COVID-19 outbreak, there were many road traffic accidents before 2020,and after recovering in 2022.Also ,most of the car accidence happened in the well-known peek time aound 9 am and 19 pm.
+From the four plots,we found that Before the COVID-19 outbreak, there were many road traffic accidents before 2020,and after recovering COVID in 2022.Also ,most of the car accidence happened in the well peek time aound 9 am and 19 pm.
 
 ```{r}
 accident_counts <- acci_high1 %>%
@@ -898,7 +892,7 @@ ggplot(data = df_time) +
 
 It is not surprising to observe that most of the accidents occur during spring in April and winter in December.
 
-### ***Continue the previous max density area,we add the time into analysis,which we select the April and the December.***
+***Continue the previous max density area,we add the time into analysis,which we select the April and the December.***
 
 H0:In the street network of amut Prakan, the occurrences of traffic accidents are completely random, meaning they exhibit a uniform distribution that follows the Complete Spatial Randomness (CSR) hypothesis.
 
@@ -910,10 +904,8 @@ acci_road_intersection_filtered <- acci_road_intersection %>%
 ```
 
 ```{r}
-# 找到空间上重复的点
 duplicates <- st_equals(acci_road_intersection_filtered, acci_road_intersection_filtered)
 
-# 使用索引移除重复点，保留第一个出现的点
 acci_road_intersection_filtered <- acci_road_intersection_filtered[!duplicated(duplicates), ]
 
 ```
@@ -959,8 +951,8 @@ We can now estimate the kernel density in both space and time for the Bangkok wh
 ```{r, cache=TRUE}
 #| eval: false
 cv_scores <- bw_tnkde_cv_likelihood_calc(
-  bws_net = seq(200, 1100, 100),  # 网络带宽使用 seq() 来创建带宽序列
-  bws_time = seq(10, 70, 10),     # 时间带宽使用 seq() 来创建时间带宽序列
+  bws_net = seq(200, 1100, 100),  
+  bws_time = seq(10, 70, 10),    
   lines = road_b,
   events = acci_b,
   time_field = "Time",
@@ -984,7 +976,7 @@ knitr::kable(cv_scores)
 
 ```
 
-According to the “leave one out cross validation” method, the optimal set of bandwidths is 3000 metres and 70 days.
+According to the “leave one out cross validation” method, the optimal set of bandwidths is 1100 metres and 70 days.
 
 ```{r, cache=TRUE}
 # choosing sample in times 
@@ -1049,7 +1041,6 @@ return(map1)
 })
 
 ```
-
 
 ```{r, cache=TRUE}
 #| eval: false

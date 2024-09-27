@@ -427,8 +427,6 @@ First, let us examine the result by using the code chunk below.
 lag_sum
 ```
 
-the meaning of Spatial lag as a sum of neighboring values :
-
 Next, we will append the lag_sum GDPPC field into hunan sf data frame by using the code chunk below.
 
 ```{r}
