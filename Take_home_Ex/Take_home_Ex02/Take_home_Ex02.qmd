@@ -11,3 +11,76 @@ execute:
 ---
 
 # **Discovering impacts of COVID-19 on Thailand tourism economy at the province level using spatial and spatio-temporal statistics**
+
+## The scene
+
+Tourism is one of Thailand’s largest industries, accounting for some 20% of the gross domestic product (GDP). In 2019, Thailand earned 90 billion US\$ from domestic and international tourism, but the COVID-19 pandemic caused revenues to crash to 24 billion US\$ in 2020.
+
+Figure below shows the total revenue receipt from tourism sector from January 2019 until Feb 2023. The figure reveals that the revenue from tourism industry have been recovered gradually since September 2021.
+
+However, it is important to note that the tourism economy of Thailand are not evenly distributed. Figure below reveals that the tourism economy of Thailand are mainly focus on five provinces, namely Bangkok, Phuket, Chiang Mai, Sukhothai and Phetchaburi.
+
+::: panel-tabset
+## Objectives
+
+As a curious geospatial analytics green horn, you are interested to discover:
+
+-   if the key indicators of tourism economy of Thailand are independent from space and space and time.
+
+-   If the tourism economy is indeed spatial and spatio-temporal dependent, then, you would like to detect where are the clusters and outliers, and the emerging hot spot/cold spot areas.
+
+## The Task
+
+The specific tasks of this take-home exercise are as follows:
+
+-   Using appropriate function of **sf** and **tidyverse**, preparing the following geospatial data layer:
+
+    -   a study area layer in sf polygon features. It must be at [province level](https://en.wikipedia.org/wiki/Provinces_of_Thailand) (including Bangkok) of Thailand.
+
+    -   a tourism economy indicators layer within the study area in sf polygon features.
+
+    -   a derived tourism economy indicator layer in [**spacetime s3 class of sfdep**](https://sfdep.josiahparry.com/articles/spacetime-s3). Keep the time series at **month and year levels**.
+
+-   Using the extracted data, perform global spatial autocorrelation analysis by using [sfdep methods](https://is415-gaa-tskam.netlify.app/in-class_ex/in-class_ex05/in-class_ex05-glsa).
+
+-   Using the extracted data, perform local spatial autocorrelation analysis by using [sfdep methods](https://r4gdsa.netlify.app/chap10.html).
+
+-   Using the extracted data, perform emerging hotspot analysis by using [sfdep methods](https://is415-gaa-tskam.netlify.app/in-class_ex/in-class_ex05/in-class_ex05-ehsa).
+
+-   Describe the spatial patterns revealed by the analysis above.
+:::
+
+## The Data
+
+For the purpose of this take-home exercise, two data sets shall be used, they are:
+
+-   [Thailand Domestic Tourism Statistics](https://www.kaggle.com/datasets/thaweewatboy/thailand-domestic-tourism-statistics) at Kaggle. You are required to use **version 2** of the data set.
+
+-   [Thailand - Subnational Administrative Boundaries](https://data.humdata.org/dataset/cod-ab-tha?) at HDX. You are required to use the province boundary data set.
+
+## **1Getting Started**
+
+```{r}
+pacman::p_load(sf, spdep, tmap, tidyverse)
+```
+
+1.2 Getting the Data Into R Environment
+
+Import csv file into r environment
+```{r}
+tt1923 <- read_csv("data/rawdata/thailand_domestic_tourism_2019_2023_ver2.csv")
+```
+Import shapefile into r environment
+
+```{r}
+b1 <- st_read(dsn = "data/rawdata", 
+                 layer = "tha_admbnda_adm1_rtsd_20220121")
+```
+A tourism economy indicators layer within the study area in sf polygon features.
+```{r}
+tb <- b1 %>%
+  left_join(tt1923, by = c("ADM1_EN" = "province_eng"))
+```
+
+
+
