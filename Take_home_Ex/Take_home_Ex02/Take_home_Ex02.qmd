@@ -1,0 +1,13 @@
+---
+title: "Take home Exercise2"
+author: "yang yayong"
+date: "Sep 27 2024"
+date-modified: "last-modified"
+execute:
+  eval: true
+  echo: true
+  message: false
+  freeze: true
+---
+
+# **Discovering impacts of COVID-19 on Thailand tourism economy at the province level using spatial and spatio-temporal statistics**

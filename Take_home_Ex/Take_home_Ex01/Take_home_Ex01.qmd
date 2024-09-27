@@ -15,6 +15,8 @@ execute:
 
 # **Thailand Road Accident Case Study**
 
+![](images/ThailandBangkok.jpg)
+
 ## 1 The scene
 
 Overview According to the World Health Organization (WHO), road traffic accidents cause approximately 1.19 million deaths annually, with 20-50 million non-fatal injuries. Vulnerable road users, such as pedestrians, cyclists, and motorcyclists, make up more than half of all deaths. Road traffic injuries are the leading cause of death for children and young adults aged 5–29, with two-thirds of fatalities occurring among working-age individuals (18–59 years). Low- and middle-income countries, which own 60% of the world’s vehicles, account for 90% of road fatalities. Road accidents also impose significant economic burdens, costing countries 3% of their annual GDP.
