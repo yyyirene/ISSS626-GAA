@@ -61,26 +61,98 @@ For the purpose of this take-home exercise, two data sets shall be used, they ar
 ## **1Getting Started**
 
 ```{r}
-pacman::p_load(sf, spdep, tmap, tidyverse)
+pacman::p_load(sf, spdep, tmap, tidyverse,ggplot2)
 ```
 
 1.2 Getting the Data Into R Environment
 
 Import csv file into r environment
+
 ```{r}
 tt1923 <- read_csv("data/rawdata/thailand_domestic_tourism_2019_2023_ver2.csv")
 ```
+
 Import shapefile into r environment
 
 ```{r}
 b1 <- st_read(dsn = "data/rawdata", 
                  layer = "tha_admbnda_adm1_rtsd_20220121")
 ```
+
 A tourism economy indicators layer within the study area in sf polygon features.
+
 ```{r}
 tb <- b1 %>%
   left_join(tt1923, by = c("ADM1_EN" = "province_eng"))
 ```
+
+```{r}
+library(ggplot2)
+ggplot() +
+  geom_sf(data = b1, color = "black", size = 0.5)
+```
+```{r}
+colnames(tb)
+```
+To minimize memory usage, we can remove the columns that are unnecessary for this study and retain only the relevant ones.
+
+```{r}
+tb_selected <- tb %>%
+  select(Shape_Leng, Shape_Area, ADM1_EN, date.y, region_eng, variable, value, geometry)
+```
+
+```{r}
+tb_selected
+```
+
+```{r}
+#b1_filtered <- b1 %>%
+  #filter(ADM1_EN %in% c("Bangkok", "Phuket", "Chiang Mai", "Sukhothai", "Phetchaburi"))
+```
+
+```{r}
+#gplot() +
+  #geom_sf(data = b1_filtered, color = "black", size = 0.5)
+```
+
+```{r}
+tm_shape(b1)+
+  tm_fill("region_eng", 
+          palette = c("#57bfc0","#7977f3", "#ce77b4","#f67774","#f89974", "#f8d673","#f9f777"),
+          title = "Province Name") +
+  tm_borders(col = "white")+
+  tm_layout(main.title = "Study Area (Thailand)",
+            main.title.position = "center",
+            main.title.size = 2,
+            main.title.fontface = "bold",
+            legend.title.size = 1.8,
+            legend.text.size = 1.3,
+            frame = TRUE) +
+  tm_borders(alpha = 0.5) +
+  tm_compass(type="8star", text.size = 1.5, size = 3, position=c("RIGHT", "TOP")) +
+  tm_scale_bar(position=c("LEFT", "BOTTOM"), text.size=1.2) +
+  tm_grid(labels.size = 1,alpha =0.2)
+```
+需要提取年份
+
+```{r}
+unique_regions <- unique(tb_selected$region_eng)
+print(unique_regions)
+```
+
+```{r}
+# 筛选出 region_eng 列中为 NA 的行
+na_rows <- tb_selected[is.na(tb_selected$region_eng), ]
+
+# 打印出包含 NA 值的行
+print(na_rows)
+```
+
+
+
+
+
+
 
 
 
