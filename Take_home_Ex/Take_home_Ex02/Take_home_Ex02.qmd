@@ -91,9 +91,11 @@ library(ggplot2)
 ggplot() +
   geom_sf(data = b1, color = "black", size = 0.5)
 ```
+
 ```{r}
 colnames(tb)
 ```
+
 To minimize memory usage, we can remove the columns that are unnecessary for this study and retain only the relevant ones.
 
 ```{r}
@@ -104,16 +106,98 @@ tb_selected <- tb %>%
 ```{r}
 tb_selected
 ```
-
 ```{r}
-#b1_filtered <- b1 %>%
-  #filter(ADM1_EN %in% c("Bangkok", "Phuket", "Chiang Mai", "Sukhothai", "Phetchaburi"))
+# 筛选出 region_eng 列中为 NA 的行
+na_rows <- tb_selected[is.na(tb_selected$region_eng), ]
+
+# 打印出包含 NA 值的行
+print(na_rows)
 ```
 
 ```{r}
-#gplot() +
-  #geom_sf(data = b1_filtered, color = "black", size = 0.5)
+# 删除 tb_selected 中 region_eng 为 NA 的行，并去掉重复
+tb_selected2 <- tb_selected %>%
+  filter(!is.na(region_eng))   # 筛选出 region_eng 为 NA 的行
 ```
+
+
+We use R’s mutate() and lubridate packages for date manipulation
+
+Creating a Time Series Cube
+
+```{r}
+tb_selected2 <- tb_selected2 %>%
+  mutate(
+    YearMonth = ym(format(date.y, "%Y-%m"))  # 转换为 Date 格式，表示年月
+  )
+```
+
+```{r}
+# 对数据进行按年-月聚合，计算每个月 ratio_tourist_stay 的均值
+tb_aggregated_yearmonth <- tb_selected %>%
+  mutate(YearMonth = format(as.Date(date.y), "%Y-%m")) %>%  # 提取年-月信息
+  group_by(ADM1_EN, YearMonth) %>%  # 按地区和年-月进行分组
+  summarise(mean_ratio_tourist_stay = mean(value, na.rm = TRUE), .groups = 'drop')  # 计算均值
+```
+
+```{r}
+# 查看聚合后的数据
+print(tb_aggregated_yearmonth)
+```
+
+
+
+
+```{r}
+# 假设 tb_selected2 包含 County 和 YearMonth 列
+tb_complete <- tb_selected2 %>%
+  complete(ADM1_EN, YearMonth)  # 完整化时间和空间的组合
+
+# 填充缺失值（如果需要，可以根据具体情况填写其他默认值）
+tb_complete <- tb_complete %>%
+  mutate(across(everything(), ~ ifelse(is.na(.), 0, .)))
+
+# 检查数据
+head(tb_complete)
+```
+
+
+```{r}
+
+```
+
+```{r}
+tb_selected2 <- tb_selected2 %>%
+  group_by(County, YearMonth) %>%
+  summarise(across(everything(), mean, na.rm = TRUE))
+```
+
+
+
+```{r}
+tb_st <-spacetime(tb_selected2, b1,
+                      .loc_col = "ADM1_EN",
+                      .time_col = "YearMonth")
+```
+
+```{r}
+is_spacetime_cube(tb_st)
+```
+
+```{r}
+Gtb_nb <- tb_st %>%
+  activate("geometry") %>%
+  mutate(nb = include_self(
+    st_contiguity(geometry)),
+    wt = st_inverse_distance(nb, 
+                             geometry, 
+                             scale = 1,
+                             alpha = 1),
+    .before = 1) %>%
+  set_nbs("nb") %>%
+  set_wts("wt")
+```
+
 
 ```{r}
 tm_shape(b1)+
@@ -133,26 +217,12 @@ tm_shape(b1)+
   tm_scale_bar(position=c("LEFT", "BOTTOM"), text.size=1.2) +
   tm_grid(labels.size = 1,alpha =0.2)
 ```
+
 需要提取年份
 
 ```{r}
 unique_regions <- unique(tb_selected$region_eng)
 print(unique_regions)
 ```
-
-```{r}
-# 筛选出 region_eng 列中为 NA 的行
-na_rows <- tb_selected[is.na(tb_selected$region_eng), ]
-
-# 打印出包含 NA 值的行
-print(na_rows)
-```
-
-
-
-
-
-
-
 
 
