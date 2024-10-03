@@ -71,7 +71,6 @@ Import csv file into r environment
 ```{r}
 tt1923 <- read_csv("data/rawdata/thailand_domestic_tourism_2019_2023_ver2.csv")
 ```
-
 Import shapefile into r environment
 
 ```{r}
@@ -82,43 +81,225 @@ b1 <- st_read(dsn = "data/rawdata",
 A tourism economy indicators layer within the study area in sf polygon features.
 
 ```{r}
-tb <- b1 %>%
-  left_join(tt1923, by = c("ADM1_EN" = "province_eng"))
+#tb <- b1 %>%
+  #left_join(tt1923, by = c("ADM1_EN" = "province_eng"))
 ```
 
-```{r}
-library(ggplot2)
-ggplot() +
-  geom_sf(data = b1, color = "black", size = 0.5)
-```
 
-```{r}
-colnames(tb)
-```
-
-To minimize memory usage, we can remove the columns that are unnecessary for this study and retain only the relevant ones.
-
-```{r}
-tb_selected <- tb %>%
-  select(Shape_Leng, Shape_Area, ADM1_EN, date.y, region_eng, variable, value, geometry)
-```
-
-```{r}
-tb_selected
-```
 ```{r}
 # 筛选出 region_eng 列中为 NA 的行
-na_rows <- tb_selected[is.na(tb_selected$region_eng), ]
+na_rows <- tt1923[is.na(tt1923$region_eng), ]
 
 # 打印出包含 NA 值的行
-print(na_rows)
+na_rows
+```
+
+#As can be seen from the figure, na_rows is a data frame containing 0 rows, which #means that is.na(tt1923_selected$region_eng) did not match any NA values, so no rows #were filtered out. Therefore, it can be confirmed that there are no missing values #​​in the region_eng column.
+
+```{r}
+unique_counts <- sapply(tt1923, n_distinct)
+print(unique_counts)
+```
+```{r}
+unique(tt1923$region_eng)
+```
+
+
+```{r}
+unique(tt1923$variable)
+```
+
+-   ratio_tourist_stay - ratio of tourists staying
+
+-   no_tourist_stay - number of tourists staying
+
+-   no_tourist_all - total number of tourists
+
+-   no_tourist_thai - number of local tourists
+
+-   no_tourist_foreign - number of foreign tourists
+
+-   revenue_all - total tourism revenue
+
+-   revenue_thai - revenue from local tourists
+
+-   revenue_foreign - revenue from foreign tourists
+
+
+```{r}
+region_total_revenue <- tt1923 %>%
+  filter(variable == "revenue_all") %>%  
+  group_by(region_eng) %>%                
+  summarise(total_revenue = sum(value, na.rm = TRUE))  
 ```
 
 ```{r}
-# 删除 tb_selected 中 region_eng 为 NA 的行，并去掉重复
-tb_selected2 <- tb_selected %>%
-  filter(!is.na(region_eng))   # 筛选出 region_eng 为 NA 的行
+# 按 total_revenue 降序排列
+region_total_revenue <- region_total_revenue %>%
+  arrange(desc(total_revenue))
+
+# 绘制条形图
+ggplot(region_total_revenue, aes(x = reorder(region_eng, total_revenue), y = total_revenue, fill = region_eng)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Total Tourism Revenue by Region", x = "Region", y = "Total Revenue") +
+  theme_minimal() +
+  coord_flip() +
+  guides(fill = "none")
 ```
+
+From the perspective of tourism revenue, Central (Central Region) is the most valuable area because its tourism revenue is significantly higher than other regions, especially Bangkok, as an important transportation hub and cultural center, attracting a large number of domestic and international tourists.
+
+
+```{r}
+tb_sc <- tt1923  %>%
+  filter(region_eng == "central") %>%
+  select(date, province_eng, region_eng, variable,value)
+```
+
+```{r}
+central_provinces <- tb_sc %>%
+  filter(region_eng == "central") %>%
+  select(province_eng) %>%  # 选择省份名称列
+  distinct()           # 去重，确保每个省份只出现一次
+
+# 打印中心区域的省份信息
+central_provinces
+```
+
+```{r}
+tb_sc_filtered <- tb_sc %>%
+  filter(!(province_eng %in% c("Lopburi", "Chainat")))
+```
+
+
+```{r}
+selected_provinces <- c(
+  "Bangkok", "Lopburi", "Phra Nakhon Si Ayutthaya", "Saraburi", "Chainat",
+  "Nakhon Pathom", "Sing Buri", "Ang Thong", "Nonthaburi", "Pathum Thani",
+  "Samut Prakan", "Samut Sakhon", "Ratchaburi", "Kanchanaburi",
+  "Samut Songkhram", "Suphan Buri", "Phetchaburi", "Prachuap Khiri Khan"
+)
+```
+
+```{r}
+b1_filtered <- b1 %>%
+  filter(ADM1_EN %in% selected_provinces)  %>%
+select(ADM1_EN, Shape_Area, Shape_Leng, geometry)
+```
+
+```{r}
+plot(b1_filtered)
+```
+
+```{r}
+merged_data <- left_join(b1_filtered, tb_sc_filtered, by = c("ADM1_EN" = "province_eng"))
+```
+
+```{r}
+# 筛选出 region_eng 列中为 NA 的行
+na_rows2 <- merged_data[is.na(merged_data$region_eng), ]
+
+# 打印出包含 NA 值的行
+na_rows2
+```
+
+
+From data provided,we can select three economic indicators：
+
+-   Tourist quantity index
+
+```{r}
+tourist_numbers_thai <- merged_data %>%
+  filter(variable %in% c( "no_tourist_thai"))
+```
+
+```{r}
+tourist_numbers_foreign <- merged_data %>%
+  filter(variable %in% c( "no_tourist_foreign"))
+```
+
+```{r}
+ # 按年份聚合数据
+tourist_numbers_thai_yearly <- tourist_numbers_thai %>%
+  mutate(year = lubridate::year(date)) %>%  # 提取年份
+  group_by(ADM1_EN, year) %>%  # 按区域和年份分组
+  summarise(total_value = sum(value, na.rm = TRUE)) %>%  # 对每年的 value 列求和
+  ungroup()
+```
+
+```{r}
+# 确保 tmap 模式为 plot 模式
+tmap_mode("plot")
+
+# 绘制每年一个地图
+tm_shape(tourist_numbers_yearly) +
+  tm_fill("total_value", 
+          style = "jenks", 
+          palette = "Blues", 
+          title = "Total local Tourist Numbers") +
+  tm_facets(by = "year") +  # 使用 year 列，生成每年一个地图
+  tm_layout(main.title = "Total local Tourist Numbers",
+            main.title.size = 1.2,
+            legend.width = 1.2,  # 调整图例宽度
+            legend.text.size = 0.8)
+```
+
+```{r}
+ # 按年份聚合数据
+tourist_numbers_foreign_yearly <- tourist_numbers_foreign %>%
+  mutate(year = lubridate::year(date)) %>%  # 提取年份
+  group_by(ADM1_EN, year) %>%  # 按区域和年份分组
+  summarise(total_value = sum(value, na.rm = TRUE)) %>%  # 对每年的 value 列求和
+  ungroup()
+```
+
+```{r}
+# 确保 tmap 模式为 plot 模式
+tmap_mode("plot")
+
+# 绘制每年一个地图
+tm_shape(tourist_numbers_foreign_yearly) +
+  tm_fill("total_value", 
+          style = "jenks", 
+          palette = "Greens", 
+          title = "Total foreign Tourist Numbers") +
+  tm_facets(by = "year") +  # 使用 year 列，生成每年一个地图
+  tm_layout(main.title = "Total foreign Tourist Numbers",
+            main.title.size = 1.2,
+            legend.width = 1.2,  # 调整图例宽度
+            legend.text.size = 0.8)
+```
+
+
+-   Tourism income index
+
+```{r}
+tourist_revenue <- tb_sc_filtered %>%
+  filter(variable %in% c( "revenue_thai", "revenue_foreign"))
+```
+
+```{r}
+ggplot(tourist_revenue, aes(x = variable, y = value, fill = variable)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Tourism Revenue", x = "Revenue Type", y = "Revenue") +
+  theme_minimal()
+
+```
+
+-   Tourist behavior index
+
+```{r}
+tourist_behavior <- tt1923_selected %>%
+  filter(variable %in% c("ratio_tourist_stay",
+                         "no_tourist_stay"))
+```
+
+
+
+
+
+
+
 
 
 We use R’s mutate() and lubridate packages for date manipulation
@@ -126,19 +307,12 @@ We use R’s mutate() and lubridate packages for date manipulation
 Creating a Time Series Cube
 
 ```{r}
-tb_selected2 <- tb_selected2 %>%
+tt1923_selected2 <- tt1923_selected %>%
   mutate(
-    YearMonth = ym(format(date.y, "%Y-%m"))  # 转换为 Date 格式，表示年月
+    YearMonth = ym(format(date, "%Y-%m"))  # 转换为 Date 格式，表示年月
   )
 ```
 
-```{r}
-# 对数据进行按年-月聚合，计算每个月 ratio_tourist_stay 的均值
-tb_aggregated_yearmonth <- tb_selected %>%
-  mutate(YearMonth = format(as.Date(date.y), "%Y-%m")) %>%  # 提取年-月信息
-  group_by(ADM1_EN, YearMonth) %>%  # 按地区和年-月进行分组
-  summarise(mean_ratio_tourist_stay = mean(value, na.rm = TRUE), .groups = 'drop')  # 计算均值
-```
 
 ```{r}
 # 查看聚合后的数据
@@ -147,30 +321,25 @@ print(tb_aggregated_yearmonth)
 
 
 
-
 ```{r}
-# 假设 tb_selected2 包含 County 和 YearMonth 列
-tb_complete <- tb_selected2 %>%
-  complete(ADM1_EN, YearMonth)  # 完整化时间和空间的组合
-
-# 填充缺失值（如果需要，可以根据具体情况填写其他默认值）
-tb_complete <- tb_complete %>%
-  mutate(across(everything(), ~ ifelse(is.na(.), 0, .)))
-
-# 检查数据
-head(tb_complete)
+tm_shape(b1)+
+  tm_fill("region_eng", 
+          palette = c("#57bfc0","#7977f3", "#ce77b4","#f67774","#f89974", "#f8d673","#f9f777"),
+          title = "Region Name") +
+  tm_borders(col = "white")+
+  tm_layout(main.title = "Study Area (Thailand)",
+            main.title.position = "center",
+            main.title.size = 2,
+            main.title.fontface = "bold",
+            legend.title.size = 1.8,
+            legend.text.size = 1.3,
+            frame = TRUE) +
+  tm_borders(alpha = 0.5) +
+  tm_compass(type="8star", text.size = 1.5, size = 3, position=c("RIGHT", "TOP")) +
+  tm_scale_bar(position=c("LEFT", "BOTTOM"), text.size=1.2) +
+  tm_grid(labels.size = 1,alpha =0.2)
 ```
 
-
-```{r}
-
-```
-
-```{r}
-tb_selected2 <- tb_selected2 %>%
-  group_by(County, YearMonth) %>%
-  summarise(across(everything(), mean, na.rm = TRUE))
-```
 
 
 
@@ -198,31 +367,9 @@ Gtb_nb <- tb_st %>%
   set_wts("wt")
 ```
 
-
-```{r}
-tm_shape(b1)+
-  tm_fill("region_eng", 
-          palette = c("#57bfc0","#7977f3", "#ce77b4","#f67774","#f89974", "#f8d673","#f9f777"),
-          title = "Province Name") +
-  tm_borders(col = "white")+
-  tm_layout(main.title = "Study Area (Thailand)",
-            main.title.position = "center",
-            main.title.size = 2,
-            main.title.fontface = "bold",
-            legend.title.size = 1.8,
-            legend.text.size = 1.3,
-            frame = TRUE) +
-  tm_borders(alpha = 0.5) +
-  tm_compass(type="8star", text.size = 1.5, size = 3, position=c("RIGHT", "TOP")) +
-  tm_scale_bar(position=c("LEFT", "BOTTOM"), text.size=1.2) +
-  tm_grid(labels.size = 1,alpha =0.2)
-```
-
 需要提取年份
 
 ```{r}
 unique_regions <- unique(tb_selected$region_eng)
 print(unique_regions)
 ```
-
-
