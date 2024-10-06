@@ -61,7 +61,7 @@ For the purpose of this take-home exercise, two data sets shall be used, they ar
 ## **1Getting Started**
 
 ```{r}
-pacman::p_load(sf, sfdep, tmap, tidyverse,ggplot2,plotly,Kendall)
+pacman::p_load(sf, sfdep,spdep, tmap, tidyverse,ggplot2,plotly,Kendall)
 ```
 
 1.2 Getting the Data Into R Environment
@@ -71,6 +71,12 @@ Import csv file into r environment
 ```{r}
 tt1923 <- read_csv("data/rawdata/thailand_domestic_tourism_2019_2023_ver2.csv")
 ```
+```{r}
+#write_rds(tt1923,"data/rds/tt1923.rds")
+
+#tt1923 <- read_rds("data/rds/tt1923.rds")
+```
+
 Import shapefile into r environment
 
 ```{r}
@@ -186,12 +192,20 @@ merged_data <- left_join(b1_filtered, tb_sc_filtered, by = c("ADM1_EN" = "provin
 ```
 
 ```{r}
-na_rows2 <- merged_data[is.na(merged_data$region_eng), ]
+merged_data_date <- merged_data %>%
+  mutate(
+    YearMonth = as.integer(format(date, "%Y%m"))
+  )
+```
+
+```{r}
+na_rows2 <- merged_data_date[is.na(merged_data_date$region_eng), ]
 
 na_rows2
 ```
+
 ```{r}
-central_provinces2 <- unique(merged_data %>% dplyr::pull(ADM1_EN))
+central_provinces2 <- unique(merged_data_date %>% dplyr::pull(ADM1_EN))
 
 print(central_provinces2)
 ```
@@ -201,17 +215,29 @@ From data provided,we can select three economic indicators：
 -   Tourist quantity index
 
 ```{r}
-tourist_numbers_thai <- merged_data %>%
+tourist_numbers_thai <- merged_data_date %>%
   filter(variable %in% c( "no_tourist_thai"))
 ```
 
 ```{r}
-tourist_numbers_foreign <- merged_data %>%
+tourist_numbers_foreign <- merged_data_date %>%
   filter(variable %in% c( "no_tourist_foreign"))
 ```
 
-```{r}
 
+```{r, cache=TRUE}
+tourist_numbers_thai_monthly <- tourist_numbers_thai %>%
+  mutate(
+    year = year(date),
+    month = month(date)
+  ) %>%
+  group_by(ADM1_EN, year, month) %>%  # 按省份、年和月分组
+  summarise(total_value = sum(value, na.rm = TRUE)) %>%
+  ungroup()
+```
+
+
+```{r, cache=TRUE}
 tourist_numbers_thai_yearly <- tourist_numbers_thai %>%
   mutate(year = lubridate::year(date)) %>%  
   group_by(ADM1_EN, year) %>%  
@@ -234,7 +260,7 @@ tm_shape(tourist_numbers_yearly) +
             legend.text.size = 0.8)
 ```
 
-```{r}
+```{r, cache=TRUE}
  # 按年份聚合数据
 tourist_numbers_foreign_yearly <- tourist_numbers_foreign %>%
   mutate(year = lubridate::year(date)) %>%  
@@ -263,16 +289,16 @@ tm_shape(tourist_numbers_foreign_yearly) +
 -   Tourism income index
 
 ```{r}
-tourist_revenue_thai <- merged_data %>%
+tourist_revenue_thai <- merged_data_date %>%
   filter(variable %in% c( "revenue_thai"))
 ```
 
 ```{r}
-tourist_revenue_foreign <- merged_data %>%
+tourist_revenue_foreign <- merged_data_date %>%
   filter(variable %in% c( "revenue_foreign"))
 ```
 
-```{r}
+```{r, cache=TRUE}
  # 按年份聚合数据
 tourist_revenue_thai_yearly <- tourist_revenue_thai %>%
   mutate(year = lubridate::year(date)) %>%  
@@ -299,7 +325,7 @@ tm_shape(tourist_revenue_thai_yearly) +
 ```
 
 
-```{r}
+```{r, cache=TRUE}
  # 按年份聚合数据
 tourist_revenue_foreign_yearly <- tourist_revenue_foreign %>%
   mutate(year = lubridate::year(date)) %>%  
@@ -327,11 +353,11 @@ tm_shape(tourist_revenue_foreign_yearly) +
 -   Tourist behavior index
 
 ```{r}
-ratio_tourist_stay <- merged_data %>%
+ratio_tourist_stay <- merged_data_date %>%
   filter(variable %in% c( "ratio_tourist_stay"))
 ```
 
-```{r}
+```{r, cache=TRUE}
 
 ratio_tourist_stay_yearly <- ratio_tourist_stay %>%
   mutate(year = year(date)) %>%  
@@ -357,7 +383,7 @@ tm_shape(ratio_tourist_stay_yearly) +
 ```
 
 ```{r}
-no_tourist_stay <- merged_data %>%
+no_tourist_stay <- merged_data_date %>%
   filter(variable %in% c( "no_tourist_stay"))
 ```
 
@@ -399,40 +425,159 @@ the geometry: an sf object
 the location identifiers
 the time column
 
+
+```{r, cache=TRUE}
+tourist_numbers_thai_yearly_st <- as_spacetime(tourist_numbers_thai_yearly, "ADM1_EN", "year")
+```
+
 ```{r}
-tourist_numbers_thai2 <- tourist_numbers_thai %>%
+is_spacetime_cube(tourist_numbers_thai_yearly_st)
+```
+
+
+Emerging Hot Spots Analysis (EHSA)
+
+
+```{r}
+# 确保 tourist_numbers_thai_st 是一个 sf 对象，并且激活几何
+tourist_numbers_thai_yearly_st2 <- tourist_numbers_thai_yearly_st %>%
+  activate("geometry")
+
+# Step 1: 计算几何中心点并设置邻接矩阵和权重
+tourist_numbers_thai_yearly_st_nb <- tourist_numbers_thai_yearly_st2 %>%
   mutate(
-    YearMonth = as.integer(format(date, "%Y%m"))
-```
-
-
-```{r}
-class(tourist_numbers_thai2)
-```
-
-```{r}
-tourist_numbers_thai2 <- st_transform(tourist_numbers_thai2, crs = 32647) 
-```
-
-```{r}
-tourist_numbers_thai_st <- as_spacetime(tourist_numbers_thai2, "ADM1_EN", "YearMonth")
-```
-
-```{r}
-is_spacetime_cube(tourist_numbers_thai_st)
-```
-
-```{r}
-# Step 2: 使用邻接矩阵计算，并设置权重
-tourist_numbers_thai_nb <- tourist_numbers_thai_st %>%
-  activate("geometry") %>%
-  mutate(
+    # 使用 st_centroid 计算几何中心点
+    centroid = st_centroid(geometry),
     nb = include_self(st_contiguity(geometry)),  # 计算邻接关系，包含自身
-    wt = st_inverse_distance(nb, geometry, scale = 1, alpha = 1),  # 使用逆距离加权
+    wt = st_inverse_distance(nb, centroid, scale = 1, alpha = 1),  # 使用几何中心点进行逆距离加权
     .before = 1
   ) %>%
   set_nbs("nb") %>%
   set_wts("wt")
+```
+
+```{r}
+gi_stars_tourist_numbers_thai_yearly <- tourist_numbers_thai_yearly_st_nb %>% 
+  group_by(year) %>% 
+  mutate(
+    gi_star = local_gstar_perm(total_value,nb,wt)
+  ) %>% 
+  tidyr::unnest(gi_star)
+```
+
+Mann-Kendall Test
+A monotonic series or function is one that only increases (or decreases) and never changes direction. So long as the function either stays flat or continues to increase, it is monotonic.
+
+H0: No monotonic trend
+
+H1: Monotonic trend is present
+
+Mann-Kendall Test on Gi
+With these Gi* measures we can then evaluate each location for a trend using the Mann-Kendall test. The code chunk below uses Bangkok.
+
+```{r}
+bkg <- gi_stars_tourist_numbers_thai_yearly %>% 
+  ungroup() %>% 
+  filter(ADM1_EN == "Bangkok") %>% 
+  select(ADM1_EN, year, gi_star)
+```
+
+
+```{r}
+ggplot(data = bkg, 
+       aes(x = year, 
+           y = gi_star)) +
+  geom_line() +
+  theme_light()
 
 ```
+
+```{r}
+p <- ggplot(data = bkg, 
+       aes(x = year, 
+           y = gi_star)) +
+  geom_line() +
+  theme_light()
+
+ggplotly(p)
+```
+
+Printing Mann-Kendall test report
+
+```{r}
+bkg %>%
+  summarise(mk = list(
+    unclass(
+      Kendall::MannKendall(gi_star)))) %>% 
+  tidyr::unnest_wider(mk)
+```
+n the above result, sl is the p-value < 0.05. With reference to the results, we will reject the hypothesis null and infer that a  downward trend.
+
+Mann-Kendall test data.frame
+We can replicate this for each location by using group_by() of dplyr package.
+
+```{r}
+ehsa_tourist_numbers_thai_yearly <- gi_stars_tourist_numbers_thai_yearly %>%
+  group_by(ADM1_EN) %>%
+  summarise(mk = list(
+    unclass(
+      Kendall::MannKendall(gi_star)))) %>%
+  tidyr::unnest_wider(mk)
+head(ehsa_tourist_numbers_thai_yearly)
+```
+
+We can also sort to show significant emerging hot/cold spots
+
+```{r}
+emerging <- ehsa_tourist_numbers_thai_yearly %>% 
+  arrange(sl, abs(tau)) %>% 
+  slice(1:10)
+head(emerging)
+```
+Performing Emerging Hotspot Analysis
+
+```{r}
+ehsa_tourist_numbers_thai_yearly <- emerging_hotspot_analysis(
+  x = tourist_numbers_thai_yearly_st_nb, 
+  .var = "total_value", 
+  k = 1, 
+  nsim = 99,
+  nb_col = "nb",  # 指定邻接矩阵的列名
+  wt_col = "wt"        # 指定权重的列名
+)
+```
+
+```{r}
+ggplot(data = ehsa_tourist_numbers_thai_yearly,
+       aes(x = classification)) +
+  geom_bar()
+```
+No Pattern Detected: Most areas (12.5) show no significant spatial hot or cold spot patterns. This shows that in these areas, the data does not show a specific hot or cold spot trend, and may be areas where changes are relatively uniform.
+
+Sporadic Coldspot: There are some areas (around 1-2) that exhibit an intermittent coldspot pattern, which means that these areas exhibit lower values ​​during certain periods of time that are not as good as their surroundings. Significantly.
+
+Sporadic Hotspot: There are a few areas (approximately 1-2) that exhibit an intermittent hotspot pattern, meaning that these areas exhibit higher values ​​during certain periods of time, showing contrast with their surroundings.
+
+Visualising EHSA
+
+```{r}
+b1_filtered_ehsa <- b1_filtered %>%
+  left_join(ehsa_tourist_numbers_thai_yearly,
+            by = join_by(ADM1_EN == location))
+
+```
+
+```{r}
+b1_filtered_sig <- b1_filtered_ehsa %>%
+  filter(p_value > 0.5)  
+
+tmap_mode("plot")
+
+tm_shape(b1_filtered_ehsa) +
+  tm_polygons("classification") + 
+  tm_borders(alpha = 0.5) +
+  tm_shape(b1_filtered_sig) +
+  tm_borders(alpha = 0.4)
+```
+
 
