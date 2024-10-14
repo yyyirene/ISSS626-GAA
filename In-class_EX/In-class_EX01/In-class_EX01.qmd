@@ -1,0 +1,344 @@
+---
+title: "In-class Exercise 1"
+author: "yang yayong"
+date: "Aug 26 2024"
+date-modified: "last-modified"
+execute:
+  eval: true
+  echo: true
+  message: false
+  freeze: true
+---
+
+# In-class Exercise 1: Geospatial Data Science with R
+
+## 1 Loading the R packages
+
+```{r}
+pacman::p_load(tidyverse,sf,tmap,ggstatsplot)
+```
+
+## 2.1 Working with Master Plan Planning Sub-zone Data
+
+```{r}
+mpsz14_shp <- st_read(dsn = "data/",
+                layer = "MP14_SUBZONE_WEB_PL")
+```
+
+```{r}
+#| eval: false
+mpsz14_kml = st_read("data/MasterPlan2014SubzoneBoundaryWebKML.kml")
+```
+
+delete_dsn = TRUE is a parameter in the st_write() function that controls whether an existing data source with the same name should be deleted when writing a new data source.
+
+```{r}
+st_write(mpsz14_shp,
+        "data/MasterPlan2014SubzoneBoundaryWebKML.kml",
+        delete_dsn=TRUE)  
+```
+
+## 2.2 Working with Pre-school Location Data
+
+### 2.2.1 Imports kml file
+
+```{r}
+preschool_kml <- st_read("data/PreSchoolsLocation.kml")
+```
+
+### 2.2.2 Imports geojson file
+
+```{r}
+preschool_geojson <- st_read("data/PreSchoolsLocation.geojson") 
+```
+
+```{r}
+mpsz19_kml <- st_read("data/MasterPlan2019SubzoneBoundaryNoSeaKML 09.56.03.kml")
+```
+
+Working with Master Plan 2019 Subzone Boundary Data Import shapefile
+
+```{r}
+mpsz19_shp <- st_read(dsn="data/",
+              layer="MPSZ-2019") %>%
+   st_transform(crs = 3414)
+```
+
+Import kml
+
+```{r}
+mpsz19_kml <- st_read("data/MasterPlan2019SubzoneBoundaryNoSeaKML 09.56.03.kml")
+```
+
+## 3 Handling Coordinate Systems
+
+### 3.1 Checking coordinate system
+
+```{r}
+st_crs(mpsz19_shp)
+```
+
+## 3.2 Transforming coordinate system
+
+### 3.2.1 To import MPSZ-2019
+
+```{r}
+mpsz19_shp <- st_read(dsn = "data/",
+                layer = "MPSZ-2019") %>%
+  st_transform(crs = 3414)
+```
+
+### 3.2.2 To import PreSchoolsLocation.kml
+
+```{r}
+preschool <- st_read("data/PreSchoolsLocation.kml") %>%
+  st_transform(crs = 3414)
+```
+
+## 4 Working with Population Data
+
+```{r}
+popdata <- read_csv("data/respopagesextod2023.csv")
+```
+
+## 4.1 Data Wrangling
+
+```{r}
+popdata2023 <- popdata %>% 
+  group_by(PA, SZ, AG) %>% 
+  summarise(`POP`=sum(`Pop`)) %>%  
+  ungroup() %>% 
+  pivot_wider(names_from=AG,
+              values_from = POP)
+
+colnames(popdata2023)
+```
+
+## 4.2 Data Processing
+
+```{r}
+popdata2023 <- popdata2023 %>%
+  mutate(YOUNG=rowSums(.[3:6]) # Aged 0 - 24, 10 - 24
+         +rowSums(.[14])) %>% # Aged 5 - 9
+  mutate(`ECONOMY ACTIVE` = rowSums(.[7:13])+ # Aged 25 - 59
+  rowSums(.[15])) %>%  # Aged 60 -64
+  mutate(`AGED`=rowSums(.[16:21])) %>%
+  mutate(`TOTAL`=rowSums(.[3:21])) %>%
+  mutate(`DEPENDENCY`=(`YOUNG` + `AGED`)
+  / `ECONOMY ACTIVE`) %>% 
+  select(`PA`, `SZ`, `YOUNG`, 
+         `ECONOMY ACTIVE`, `AGED`,
+         `TOTAL`, `DEPENDENCY`)
+```
+
+## 4.3 Joining popdata2023 and mpsz19_shp
+
+This line of code ensures that all values in the PA and SZ columns of popdata2023 are in uppercase, which is useful during data merging to prevent the merge operation from failing due to case inconsistencies.
+
+```{r}
+popdata2023 <- popdata2023 %>%
+  mutate_at(.vars = vars(PA, SZ), 
+          .funs = list(toupper)) 
+```
+
+mpsz_pop2023 primarily focuses on geographic information (i.e., retaining every row of the geographic boundaries) and appends the corresponding population data to this geographic information.
+
+```{r}
+mpsz_pop2023 <- left_join(mpsz19_shp, popdata2023,
+                          by = c("SUBZONE_N" = "SZ"))
+```
+
+pop2023_mpsz primarily focuses on population data (i.e., retaining every row of the population data) and appends the corresponding geographic information to this population data.
+
+```{r}
+pop2023_mpsz <- left_join(popdata2023, mpsz19_shp, 
+                          by = c("SZ" = "SUBZONE_N"))
+```
+
+## 5 Choropleth Map of Dependency Ratio by Planning Subzone
+
+## 5.1 Analytical Map: Percentile Map
+
+The concept The percentile map is a special type of quantile map with six specific categories: 0-1%,1-10%, 10-50%,50-90%,90-99%, and 99-100%. The corresponding breakpoints can be derived by means of the base R quantile command, passing an explicit vector of cumulative probabilities as c(0,.01,.1,.5,.9,.99,1). Note that the begin and endpoint need to be included.
+
+Analytical Map: Percentile Map
+
+### Step 1: Data Preparation
+
+```{r}
+mpsz_pop2023 <- mpsz_pop2023 %>%
+  drop_na()
+```
+
+### Step 2: The get function
+
+```{r}
+get.var <- function(vname,df) {
+  v <- df[vname] %>% 
+    st_set_geometry(NULL)
+  v <- unname(v[,1])
+  return(v)
+}
+
+```
+
+### Step 3: A percentile mapping function
+
+```{r}
+percentmap <- function(vnam, df, legtitle=NA, mtitle="Percentile Map"){
+  percent <- c(0,.01,.1,.5,.9,.99,1)
+  var <- get.var(vnam, df)
+  bperc <- quantile(var, percent)
+  tm_shape(mpsz_pop2023) +
+  tm_polygons() +
+  tm_shape(df) +
+     tm_fill(vnam,
+             title=legtitle,
+             breaks=bperc,
+             palette="Blues",
+          labels=c("< 1%", "1% - 10%", "10% - 50%", "50% - 90%", "90% - 99%", "> 99%"))  +
+  tm_borders() +
+  tm_layout(main.title = mtitle, 
+            title.position = c("right","bottom"))
+}
+```
+
+### Step 4: Running the functions
+
+```{r}
+percentmap("DEPENDENCY", mpsz_pop2023)
+```
+
+## 5.2 Analytical Map: Box Map
+
+The Concept
+
+A box map is an enhanced quartile map with extra lower and upper categories. When lower outliers are present, breaks start at the minimum value and the second break is at the lower fence. If there are no lower outliers, breaks start at the lower fence and the second break is at the minimum value, with no observations in between.
+
+```{r}
+ggplot(data = mpsz_pop2023,
+       aes(x = "",
+           y = DEPENDENCY)) +
+  geom_boxplot()
+```
+
+### Step 1: Creating the boxbreaks function
+
+```{r}
+boxbreaks <- function(v,mult=1.5) {
+  qv <- unname(quantile(v))
+  iqr <- qv[4] - qv[2]
+  upfence <- qv[4] + mult * iqr
+  lofence <- qv[2] - mult * iqr
+  # initialize break points vector
+  bb <- vector(mode="numeric",length=7)
+  # logic for lower and upper fences
+  if (lofence < qv[1]) {  # no lower outliers
+    bb[1] <- lofence
+    bb[2] <- floor(qv[1])
+  } else {
+    bb[2] <- lofence
+    bb[1] <- qv[1]
+  }
+  if (upfence > qv[5]) { # no upper outliers
+    bb[7] <- upfence
+    bb[6] <- ceiling(qv[5])
+  } else {
+    bb[6] <- upfence
+    bb[7] <- qv[5]
+  }
+  bb[3:5] <- qv[2:4]
+  return(bb)
+}
+```
+
+### Step 2: Creating the get.var function
+
+```{r}
+get.var <- function(vname,df) {
+  v <- df[vname] %>% st_set_geometry(NULL)
+  v <- unname(v[,1])
+  return(v)
+}
+```
+
+### Step 3: Boxmap function
+
+```{r}
+boxmap <- function(vnam, df, 
+                   legtitle=NA,
+                   mtitle="Box Map",
+                   mult=1.5){
+  var <- get.var(vnam,df)
+  bb <- boxbreaks(var)
+  tm_shape(df) +
+    tm_polygons() +
+  tm_shape(df) +
+     tm_fill(vnam,title=legtitle,
+             breaks=bb,
+             palette="Blues",
+          labels = c("lower outlier", 
+                     "< 25%", 
+                     "25% - 50%", 
+                     "50% - 75%",
+                     "> 75%", 
+                     "upper outlier"))  +
+  tm_borders() +
+  tm_layout(main.title = mtitle, 
+            title.position = c("left",
+                               "top"))
+}
+```
+
+### Step 4: Plotting Box Map
+
+```{r}
+boxmap("DEPENDENCY", mpsz_pop2023)
+```
+
+### Plotting Interactive Box Map
+
+```{r}
+tmap_options(check.and.fix = TRUE)
+tmap_mode("view")
+boxmap("DEPENDENCY", mpsz_pop2023)
+```
+
+6.Geospatial Data Wrangling
+
+6.1 Point-in-Polygon count
+
+```{r}
+mpsz19_shp <- mpsz19_shp %>%
+  mutate(`PreSch Count` = lengths(
+    st_intersects(mpsz19_shp, preschool)))
+```
+
+6.2 Computing density
+
+```{r}
+mpsz19_shp <- mpsz19_shp %>%
+  mutate(Area = units::drop_units(
+    st_area(.)),
+    `PreSch Density` = `PreSch Count` / Area * 1000000
+  )
+```
+
+6.3 Statistical Analysis
+
+```{r}
+mpsz19_shp$`PreSch Density` <- as.numeric(as.character(mpsz19_shp$`PreSch Density`))
+
+mpsz19_shp$`PreSch Count` <- as.numeric(as.character(mpsz19_shp$`PreSch Count`)) 
+
+mpsz19_shp<- as.data.frame(mpsz19_shp) 
+
+ggscatterstats(data = mpsz19_shp,
+               x = `PreSch Density`,
+               y = `PreSch Count`,
+               type = "parametric")
+```
+
+**Notice:**
+
+When we convert a spatial object to a data frame using as.data.frame() , the geometry column is usually dropped.
