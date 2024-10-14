@@ -333,7 +333,6 @@ tm_shape(tourist_numbers_thai_yearly) +
             legend.text.size = 0.8)
 ```
 
-
 Tourist concentration areas: The first picture shows the trend of tourists continuing to concentrate in the central region, while the second picture reveals the details of the fluctuations in the number of tourists, especially in 2020 and 2022, when tourists were more evenly distributed in the south and the central region.
 
 Classification: The second picture is more detailed, allowing us to observe more regional differences, even areas with lower tourist numbers are distinguished.
@@ -341,7 +340,6 @@ Classification: The second picture is more detailed, allowing us to observe more
 Trend: In both pictures, it can be seen that the number of tourists in 2019 and 2022 was more concentrated, while 2020 and 2023 showed different degrees of tourist distribution, especially fluctuations in the central and southern regions.
 
 #### 4.2Total Foreign Tourists (Yearly)
-
 
 Equal
 
@@ -390,7 +388,6 @@ tm_shape(tourist_numbers_foreign_yearly) +
             legend.width = 1.2,  
             legend.text.size = 0.8)
 ```
-
 
 The first map shows more clearly the significant advantage of Bangkok in receiving foreign tourists in 2019, while the overall number of tourists in the following years has dropped sharply.
 
@@ -457,7 +454,6 @@ tourist_numbers_2019_monthly <- tourist_numbers_thai_monthly %>%
   filter(year == 2019)
 ```
 
-
 Equal
 
 ```{r, cache=TRUE}
@@ -498,14 +494,12 @@ tm_shape(tourist_numbers_2019_monthly) +
             legend.text.size = 0.8)
 ```
 
-
 #### 4.4Foreign tourist monthly
 
 ```{r}
 tourist_numbers_2019_foreign_monthly <- tourist_numbers_foreign_monthly %>%
   filter(year == 2019)
 ```
-
 
 Equal
 
@@ -546,7 +540,6 @@ tm_shape(tourist_numbers_2019_foreign_monthly) +
             legend.width = 1.2, 
             legend.text.size = 0.8)
 ```
-
 
 However，tourism for foreign tourists has been affected by the epidemic，especially in Bangkok at the end of the 2019.
 

@@ -1,0 +1,152 @@
+---
+title: "In-class_EX07"
+author: "yang yayong"
+date: "Oct 14 2024"
+date-modified: "last-modified"
+execute:
+  eval: true
+  echo: true
+  message: false
+  freeze: true
+---
+
+```{r}
+pacman::p_load(olsrr, corrplot, ggpubr, sf, spdep, GWmodel, tmap, tidyverse, gtsummary,ggstatsplot)
+```
+
+```{r}
+condo_resale = read_csv("data/aspatial/Condo_resale_2015.csv")
+```
+
+```{r}
+condo_resale.sf <- st_as_sf(condo_resale,
+                            coords = c("LONGITUDE", "LATITUDE"),
+                            crs=4326) %>%
+  st_transform(crs=3414)
+```
+
+```{r}
+corrplot(cor(condo_resale[, 5:23]), diag = FALSE, order = "AOE",
+         tl.pos = "td", tl.cex = 0.5, method = "number", type = "upper")
+```
+
+```{r}
+#| fig-width: 12
+#| fig-height: 10
+ggcorrmat(condo_resale[,5:23])
+```
+
+```{r}
+condo.mlr <- lm(formula = SELLING_PRICE ~ AREA_SQM + AGE    + 
+                  PROX_CBD + PROX_CHILDCARE + PROX_ELDERLYCARE +
+                  PROX_URA_GROWTH_AREA + PROX_HAWKER_MARKET + PROX_KINDERGARTEN + 
+                  PROX_MRT  + PROX_PARK + PROX_PRIMARY_SCH + 
+                  PROX_TOP_PRIMARY_SCH + PROX_SHOPPING_MALL + PROX_SUPERMARKET + 
+                  PROX_BUS_STOP + NO_Of_UNITS + FAMILY_FRIENDLY + FREEHOLD, 
+                data=condo_resale.sf)  #using the sf version
+summary(condo.mlr)
+```
+
+```{r}
+condo.mlr1 <- lm(formula = SELLING_PRICE ~ AREA_SQM + AGE + 
+                   PROX_CBD + PROX_CHILDCARE + PROX_ELDERLYCARE +
+                   PROX_URA_GROWTH_AREA + PROX_MRT  + PROX_PARK + 
+                   PROX_PRIMARY_SCH + PROX_SHOPPING_MALL    + PROX_BUS_STOP + 
+                   NO_Of_UNITS + FAMILY_FRIENDLY + FREEHOLD,
+                 data=condo_resale.sf)
+ols_regress(condo.mlr1)
+```
+
+
+```{r}
+#| eval: false
+ols_vif_tol(condo_mlr)
+```
+
+```{r}
+#| eval: false
+condo_fw_mlr <- ols_step_forward_p(
+  condo_mlr,
+  p_val = 0.05,
+  details = FALSE
+)
+```
+
+```{r}
+#| eval: false
+# Export the residuals of the multivariate linear regression model and save them as a data frame
+mlr_output <- as.data.frame(condo_fw_mlr$model$residuals) %>%
+  rename("FW_MLR_RES" = 'condo_fw_mlr$model$residuals')
+
+# Join the newly created data frame with the condo_resale_sf object
+condo_resale_sf <- cbind(condo_resale_sf,
+                         mlr_output$FW_MLR_RES) %>%
+  rename("MLR_RES" = mlr_output$FW_MLR_RES)
+
+
+```
+
+```{r}
+#| eval: false
+tmap_mode("view")
+tmap_options(check.and.fix = TRUE)
+tm_shape(mpsz)+
+  tmap_options(check.and.fix = TRUE)+
+  tm_polygons(alpha = 0.4) +
+tm_shape(condo_resale_sf)+
+  tm_dots(col = "MLR_RES",
+          alpha=0.6,
+          style="quantile")
+tmap_mode("plot")
+
+```
+
+estimate value
+
+sfdep
+
+```{r}
+#| eval: false
+# Calculate the distance-based weight matrix using the dnearneigh function from the spdep package
+condo_resale_sf <- condo_resale_sf %>%
+  mutate(nb = st_knn(geometry, k=6, 
+                     longlat = FALSE),
+         wt = st_weights(nb, 
+                         style = "W"),
+         .before = 1)
+
+# Perform a Monte-Carlo simulation test of the global Moran's I
+global_moran_perm(condo_resale_sf$MLR_RES,
+                  condo_resale_sf$nb,
+                  condo_resale_sf$wt,
+                  alternative = "two.sided",
+                  nsim = 99)
+```
+
+```{r}
+#| eval: false  #this need the model
+bw_fixed <- bw.gwr(formula = SELLING_PRICE ~ AREA_SQM + AGE +
+                     PROX_CBD + PROX_CHILDCARE +
+                     PROX_ELDERLYCARE + PROX_URA_GROWTH_AREA +
+                     PROX_MRT + PROX_PARK + PROX_PRIMARY_SCH +
+                     PROX_SHOPPING_MALL + PROX_BUS_STOP +
+                     NO_OF_UNITS + FAMILY_FRIENDLY + FREEHOLD,
+                   data = condo_resale_sf,
+                   approach = "CV", # Use cross validation (CV) to choose the bandwidth
+                   kernel = "gaussian", 
+                   adaptive = FALSE, 
+                   longlat = FALSE) # Using plane coordinates
+```
+
+```{r}
+#| eval: false
+tmap_mode("view")
+tm_shape(mpsz_svy21)+
+  tm_polygons(alpha = 0.1) +
+tm_shape(condo_resale.sf.adaptive) +  
+  tm_dots(col = "Local_R2",
+          border.col = "gray60",
+          border.lwd = 1) +
+  tm_view(set.zoom.limits = c(11,14))
+```
+

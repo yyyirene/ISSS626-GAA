@@ -41,7 +41,9 @@ website:
           - text: "In-class Exercise 5"
             href: "In-class_EX/In-class_EX05/In-class_EX05.html" 
           - text: "In-class Exercise 6"
-            href: "In-class_EX/In-class_EX06/In-class_EX06.html"   
+            href: "In-class_EX/In-class_EX06/In-class_EX06.html" 
+          - text: "In-class Exercise 7"
+            href: "In-class_EX/In-class_EX06/In-class_EX07.html" 
             
       - text: "Take-home Exercise" 
         menu:
