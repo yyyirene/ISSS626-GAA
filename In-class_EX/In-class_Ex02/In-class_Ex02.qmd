@@ -1,0 +1,90 @@
+---
+title: "In-class_Ex02"
+author: "yang yayong"
+date: "Sep 2 2024"
+date-modified: "last-modified"
+execute:
+  eval: true
+  echo: true
+  message: false
+  freeze: true
+---
+
+**maptools** is retired and binary is removed from CRAN. However, we can download from [Posit Public Package Manager](https://packagemanager.posit.co/client/#/repos/cran/setup?snapshot=2023-10-13&distribution=windows&r_environment=ide) snapshots by using the code chunk below.
+
+After the installation is completed, it is important to edit the code chunk as shown below in order to avoid **maptools** being download and install repetitively every time the Quarto document been rendered.
+
+```{r}
+#| eval: false
+install.packages("maptools", 
+                 repos = "https://packagemanager.posit.co/cran/2023-09-13")
+
+```
+
+In **sf** package, there are two functions allow us to combine multiple simple features into one simple features. They are [`st_combine()`](https://r-spatial.github.io/sf/reference/geos_combine.html) and `st_union()`.
+
+-   `st_combine()` returns a single, combined geometry, with no resolved boundaries; returned geometries may well be invalid.
+
+-   If y is missing, `st_union(x)` returns a single geometry with resolved boundaries, else the geometries for all unioned pairs of x\[i\] and y\[j\].
+
+```{r}
+pacman::p_load(tidyverse,sf,tmap,ggstatsplot,maptools)
+```
+
+The code chunk below, `st_union()`is used to derive the coastal outline sf tibble data.frame.
+
+```{r}
+#| eval: false
+sg_sf <- mpsz_sf %>%
+    st_union()
+```
+
+The code chunk below re-scale the unit of measurement from metre to kilometre before performing KDE.
+
+```{r}
+#| eval: false
+par(bg = "#E4D5C9")
+
+gridded_kde_childcareSG_ad <- maptools::as.SpatialGridDataFrame.im(
+  kde_childcareSG_adaptive
+)
+
+spplot(gridded_kde_childcareSG_ad)
+
+```
+
+```{r}
+#| eval: false
+# Spatstat.geom method
+gridded_kde_childcareSG_ad <- as(
+  kde_childcareSG_adaptive, 
+  "SpatialGridDataFrame"
+)
+
+spplot(gridded_kde_childcareSG_ad)
+```
+
+```{r}
+#| eval: false
+set.seed(1234)
+```
+
+Make sure the result is constant.
+
+```{r}
+#| eval: false
+pacman::p_load(tidyverse,sf,tmap,ggstatsplot)
+```
+
+## Importing Traffic Accident Data
+
+```{r}
+#| eval: false
+rdacc_sf <- read_csv("data/thai_road_accident_2019_2022.csv") %>%
+  filter(!is.na(longitude) & longitude != "" & !is.na(latitude) & latitude != "") %>%
+  st_as_sf(coords = c("longitude", "latitude"),
+           crs=4326) %>%
+  st_transform(crs = 32647)
+
+
+```

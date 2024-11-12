@@ -1,0 +1,106 @@
+---
+title: "In class exercise 9"
+author: "yang yayong"
+date: "Oct 28 2024"
+date-modified: "last-modified"
+execute:
+  eval: true
+  echo: true
+  message: false
+  freeze: true
+  timeout: 1200 
+---
+
+## **Installing and Loading R packages**
+
+```{r}
+pacman::p_load(sf, spdep, GWmodel, SpatialML, tmap, rsample, Metrics, tidyverse,stringr,httr, jsonlite, rvest,knitr,ggstatsplot,SpatialAcc)
+```
+
+### **Importing Data**
+
+```{r}
+eldercare <- st_read(dsn = "data", layer = "ELDERCARE")%>%  #meter
+  st_transform(crs=3414)   
+```
+
+```{r}
+chas_clinics <- st_read("data/CHASclinics.geojson") %>% st_transform(crs=3414)
+```
+
+### **Buffering**
+
+```{r}
+buffer_1km<- st_buffer(eldercare,
+                       dist = 1000)
+```
+
+```{r}
+# Set tmap to viewing mode
+tmap_mode("view")
+
+# Drawing code
+tm_shape(buffer_1km) + 
+    tm_polygons() +  # Draw the buffer_1km layer
+tm_shape(chas_clinics) + 
+    tm_dots()  # Draw the CHAS layer
+```
+
+### **Point-in-polygon count**
+
+Count number of points within a distance
+
+```{r}
+buffer_1km$pts_count <-lengths(
+  st_intersects(buffer_1km)
+)
+```
+
+```{r}
+mpsz <- st_read(dsn = "data", layer = "MP14_SUBZONE_NO_SEA_PL")
+```
+
+```{r}
+hexagons <- st_read(dsn = "data", layer = "hexagons") 
+```
+
+```{r}
+mpsz <- st_transform(mpsz, 3414) 
+eldercare <- st_transform(eldercare, 3414) 
+hexagons <- st_transform(hexagons, 3414)
+
+```
+
+```{r}
+ODMatrix <- read_csv("data/OD_Matrix.csv", skip = 0)
+```
+
+The capacity of all nursing facilities is set to 100
+
+```{r}
+eldercare <- eldercare %>%
+  select(fid, ADDRESSPOS) %>%
+  mutate(capacity = 100)  
+```
+
+```{r}
+distmat <- ODMatrix %>%
+  select(origin_id, destination_id, total_cost) %>%
+  spread(destination_id, total_cost)%>%
+  select(c(-c('origin_id')))
+```
+
+##be careful 120 variables and 3125 variables
+
+```{r}
+distmat_km <- as.matrix(distmat/1000)
+```
+
+```{r}
+acc_Hansen <- data.frame(ac(hexagons$demand,
+                            eldercare$capacity,
+                            distmat_km, 
+                            #d0 = 50,
+                            power = 2, 
+                            family = "Hansen"))
+```

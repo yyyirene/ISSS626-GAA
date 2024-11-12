@@ -1,0 +1,239 @@
+---
+title: "In-class EX04"
+author: "yang yayong"
+date: "Sep 16 2024"
+date-modified: "last-modified"
+execute:
+  eval: true
+  echo: true
+  message: false
+  freeze: true
+---
+
+# Geographically Weighted Summary Statistics - gwModel methods
+
+## 1.Geographically weighted summary statistics with fixed
+
+### 1.1Loading the package
+
+```{r}
+pacman::p_load(sf,ggstatsplot, tmap, tidyverse, knitr,GWmodel)
+```
+
+### 1.2Preparing the Data
+
+```{r}
+hunan_sf <- st_read(dsn = "data/geospatial", 
+                 layer = "Hunan")
+```
+
+```{r}
+hunan2012 <- read_csv("data/aspatial/Hunan_2012.csv")
+```
+
+```{r}
+hunan_sf <- left_join(hunan_sf,hunan2012)%>%
+  select(1:3,7,15,16,31,32)
+```
+
+### 1.3Mapping GDPPC
+
+```{r}
+basemap <- tm_shape(hunan_sf) +
+  tm_polygons() +
+  tm_text("NAME_3", size=0.5)
+
+gdppc <- qtm(hunan_sf, "GDPPC")
+tmap_arrange(basemap, gdppc, asp=1, ncol=2)
+```
+
+Converting to spatialpolygonsDataFrame
+
+```{r}
+hunan_sp <- hunan_sf %>%
+  as_Spatial()
+```
+
+Notice：GWmodel presently is built around the older sp and not sf formats for handling spatial data in R.
+
+## 2.Geographically Weighted Summary Statistics with adaptive bandwidth
+
+### 2.1Determine adaptive bandwidth
+
+#### 2.1.1cross-validation
+
+```{r}
+bw_cv <- bw.gwr(GDPPC ~ 1,#indepedent
+                data= hunan_sp,
+                approach = "cv",
+                adaptive = TRUE,
+                kernel = "bisquare",
+                longlat = T)
+              
+                
+```
+
+#### 2.1.2AIC
+
+```{r}
+bw_AIC <- bw.gwr(GDPPC ~ 1,#indepedent
+                data= hunan_sp,
+                approach = "AIC",
+                adaptive = TRUE, # great circle distance will be calculated 
+                kernel = "bisquare", #km
+                longlat = T)
+                
+```
+
+```{r}
+bw_cv
+```
+
+```{r}
+bw_AIC
+```
+
+### 2.1.3Computing geographically wieghted summary statistics
+
+Computing geographically wieghted summary statistics
+
+```{r}
+gwstat <- gwss(data = hunan_sp,
+               vars = "GDPPC",
+               bw = bw_AIC,
+               kernel = "bisquare",
+               adaptive = TRUE,
+               longlat = T)
+```
+
+Code chunk below is used to extract SDF data table from gwss object output from gwss(). It will be converted into data.frame by using as.data.frame().
+
+### 2.2Prepare the output data
+
+```{r}
+gwstat_df <- as.data.frame(gwstat$SDF)
+```
+
+```{r}
+hanan_gwstat <- cbind(hunan_sf,gwstat_df)
+```
+
+#cbind is used to append the newly derved data.frame onto hunan_sf sf data.frame
+
+### 2.3Visualising geographically weighted summary statistics
+
+```{r}
+tm_shape(hanan_gwstat) +
+  tm_fill("GDPPC_LM",
+          n = 5,
+          style = "quantile") +
+  tm_borders(alpha = 0.5) +
+  tm_layout(main.title = "Distribution of geographically wieghted mean",
+            main.title.position = "center",
+            main.title.size = 2.0,
+            legend.text.size = 1.2,
+            legend.height = 1.50, 
+            legend.width = 1.50,
+            frame = TRUE)
+```
+
+## 3.Geographically Weighted Summary Statistics with fixed
+
+### 3.1Determine fixed bandwidth
+
+```{r}
+bw_cv <- bw.gwr(GDPPC ~ 1,#indepedent
+                data= hunan_sp,
+                approach = "cv",
+                adaptive = FALSE,
+                kernel = "bisquare",
+                longlat = T)
+              
+                
+```
+
+```{r}
+bw_AIC <- bw.gwr(GDPPC ~ 1,#indepedent
+                data= hunan_sp,
+                approach = "AIC",
+                adaptive = FALSE,
+                kernel = "bisquare",
+                longlat = T)
+              
+                
+```
+
+```{r}
+bw_AIC
+```
+
+distance value in km
+
+```{r}
+bw_cv
+```
+
+### 3.2Computing geographically wieghted summary statistics
+
+#have six means,have six neighbours
+
+#### 3.2.3Computing fixed bandwidth
+
+```{r}
+gwstat <- gwss(data = hunan_sp,
+               vars = "GDPPC",
+               bw = bw_AIC,
+               kernel = "bisquare",
+               adaptive = FALSE,
+               longlat = T)
+```
+
+#### 3.2.4Preparing the output data
+
+Code chunk below is used to extract SDF data table from gwss object output from gwss(). It will be converted into data.frame by using as.data.frame().
+
+```{r}
+gwstat_df <- as.data.frame(gwstat$SDF)
+```
+
+Next, cbind() is used to append the newly derived data.frame onto hunan_sf sf data.frame.
+
+```{r}
+hunan_gstat <- cbind(hunan_sf, gwstat_df)
+```
+
+#### 3.2.5Visualising geographically weighted summary statistics
+
+```{r}
+tm_shape(hunan_gstat) +
+  tm_fill("GDPPC_LM",
+          n = 5,
+          style = "quantile") +
+  tm_borders(alpha = 0.5) +
+  tm_layout(main.title = "Distribution of geographically wieghted mean",
+            main.title.position = "center",
+            main.title.size = 2.0,
+            legend.text.size = 1.2,
+            legend.height = 1.50, 
+            legend.width = 1.50,
+            frame = TRUE)
+```
+
+### 3.3Geographically Weighted Correlation with Adaptive Bandwidth
+
+```{r}
+ggscatterstats(
+  data = hunan2012, 
+  x = Agri, 
+  y = GDPPC,
+  xlab = "Gross Agriculture Output", ## label for the x-axis
+  ylab = "GDP per capita", 
+  label.var = County, 
+  label.expression = Agri > 10000 & GDPPC > 50000, 
+  point.label.args = list(alpha = 0.7, size = 4, color = "grey50"),
+  xfill = "#CC79A7", 
+  yfill = "#009E73", 
+  title = "Relationship between GDP PC and Gross Agriculture Output")
+```
+
+There is a weak positive correlation between GDP per capita and Gross Agriculture Output, with a Pearson correlation coefficient of 0.31 and statistically significant (p value is small). Although the correlation is not strong, Bayesian analysis supports its existence, with the Bayes factor indicating strong support for the alternative hypothesis (that there is a correlation). Overall, the increase in agricultural output may have a certain impact on per capita GDP, but this impact is relatively weak.
