@@ -1,0 +1,15 @@
+{
+  "hash": "6e518023703a1cefa2c10f1983ad53a7",
+  "result": {
+    "engine": "knitr",
+    "markdown": "---\ntitle: \"In-class_Ex02\"\nauthor: \"yang yayong\"\ndate: \"Sep 2 2024\"\ndate-modified: \"last-modified\"\nexecute:\n  eval: true\n  echo: true\n  message: false\n  freeze: true\n---\n\n\n\n**maptools** is retired and binary is removed from CRAN. However, we can download from [Posit Public Package Manager](https://packagemanager.posit.co/client/#/repos/cran/setup?snapshot=2023-10-13&distribution=windows&r_environment=ide) snapshots by using the code chunk below.\n\nAfter the installation is completed, it is important to edit the code chunk as shown below in order to avoid **maptools** being download and install repetitively every time the Quarto document been rendered.\n\n\n\n::: {.cell}\n\n```{.r .cell-code}\ninstall.packages(\"maptools\", \n                 repos = \"https://packagemanager.posit.co/cran/2023-09-13\")\n```\n:::\n\n\n\nIn **sf** package, there are two functions allow us to combine multiple simple features into one simple features. They are [`st_combine()`](https://r-spatial.github.io/sf/reference/geos_combine.html) and `st_union()`.\n\n-   `st_combine()` returns a single, combined geometry, with no resolved boundaries; returned geometries may well be invalid.\n\n-   If y is missing, `st_union(x)` returns a single geometry with resolved boundaries, else the geometries for all unioned pairs of x\\[i\\] and y\\[j\\].\n\n\n\n::: {.cell}\n\n```{.r .cell-code}\npacman::p_load(tidyverse,sf,tmap,ggstatsplot,maptools)\n```\n:::\n\n\n\nThe code chunk below, `st_union()`is used to derive the coastal outline sf tibble data.frame.\n\n\n\n::: {.cell}\n\n```{.r .cell-code}\nsg_sf <- mpsz_sf %>%\n    st_union()\n```\n:::\n\n\n\nThe code chunk below re-scale the unit of measurement from metre to kilometre before performing KDE.\n\n\n\n::: {.cell}\n\n```{.r .cell-code}\npar(bg = \"#E4D5C9\")\n\ngridded_kde_childcareSG_ad <- maptools::as.SpatialGridDataFrame.im(\n  kde_childcareSG_adaptive\n)\n\nspplot(gridded_kde_childcareSG_ad)\n```\n:::\n\n::: {.cell}\n\n```{.r .cell-code}\n# Spatstat.geom method\ngridded_kde_childcareSG_ad <- as(\n  kde_childcareSG_adaptive, \n  \"SpatialGridDataFrame\"\n)\n\nspplot(gridded_kde_childcareSG_ad)\n```\n:::\n\n::: {.cell}\n\n```{.r .cell-code}\nset.seed(1234)\n```\n:::\n\n\n\nMake sure the result is constant.\n\n\n\n::: {.cell}\n\n```{.r .cell-code}\npacman::p_load(tidyverse,sf,tmap,ggstatsplot)\n```\n:::\n\n\n\n## Importing Traffic Accident Data\n\n\n\n::: {.cell}\n\n```{.r .cell-code}\nrdacc_sf <- read_csv(\"data/thai_road_accident_2019_2022.csv\") %>%\n  filter(!is.na(longitude) & longitude != \"\" & !is.na(latitude) & latitude != \"\") %>%\n  st_as_sf(coords = c(\"longitude\", \"latitude\"),\n           crs=4326) %>%\n  st_transform(crs = 32647)\n```\n:::\n",
+    "supporting": [],
+    "filters": [
+      "rmarkdown/pagebreak.lua"
+    ],
+    "includes": {},
+    "engineDependencies": {},
+    "preserve": {},
+    "postProcess": true
+  }
+}
