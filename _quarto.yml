@@ -1,0 +1,83 @@
+project:
+  type: website
+
+website:
+  title: "ISSS626-GAA"
+  navbar:
+    left:
+      - text: "Hands-on Exercise" 
+        menu:
+          - text: "Hands-on Exercise 1A"
+            href: "Hands-on_Ex/Hands-on_Ex01/Hands-on_Ex01.html"
+          - text: "Hands-on Exercise 1B"
+            href: "Hands-on_Ex/Hands-on_Ex01/Hands-on_Ex01B.html" 
+          - text: "Hands-on Exercise 2A"
+            href: "Hands-on_Ex/Hands-on_Ex02/Hands-on_Ex02A.html"
+          - text: "Hands-on Exercise 2B"
+            href: "Hands-on_Ex/Hands-on_Ex02/Hands-on_Ex02B.html"   
+          - text: "Hands-on Exercise 3"
+            href: "Hands-on_Ex/Hands-on_Ex03/Hands-on_Ex03.html"
+          - text: "Hands-on Exercise 4"
+            href: "Hands-on_Ex/Hands-on_Ex04/Hands-on_Ex04.html"
+          - text: "Hands-on Exercise 5"
+            href: "Hands-on_Ex/Hands-on_Ex05/Hands-on_Ex05A.html" 
+          - text: "Hands-on Exercise 5"
+            href: "Hands-on_Ex/Hands-on_Ex05/Hands-on_Ex05B.html" 
+          - text: "Hands-on Exercise 6"
+            href: "Hands-on_Ex/Hands-on_Ex06/Hands-on_Ex06.html"  
+          - text: "Hands-on Exercise 7"
+            href: "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html" 
+          - text: "Hands-on Exercise 8"
+            href: "Hands-on_Ex/Hands-on_Ex08/Hands-on_Ex08.html" 
+          - text: "Hands-on Exercise 9"
+            href: "Hands-on_Ex/Hands-on_Ex09/Hands-on_Ex09.html"
+          - text: "Hands-on Exercise 10A"
+            href: "Hands-on_Ex/Hands-on_Ex10/Hands-on_Ex10A.html"
+          - text: "Hands-on Exercise 10B"
+            href: "Hands-on_Ex/Hands-on_Ex10/Hands-on_Ex10B.html"
+            
+
+      - text: "In-class Exercise" 
+        menu:
+          - text: "In-class Exercise 1"
+            href: "In-class_EX/In-class_EX01/In-class_EX01.html"
+          - text: "In-class Exercise 2"
+            href: "In-class_EX/In-class_EX02/In-class_EX02.html"
+          - text: "In-class Exercise 3"
+            href: "In-class_EX/In-class_EX03/In-class_EX03.html"  
+          - text: "In-class Exercise 4"
+            href: "In-class_EX/In-class_EX04/In-class_EX04.html" 
+          - text: "In-class Exercise 5"
+            href: "In-class_EX/In-class_EX05/In-class_EX05.html" 
+          - text: "In-class Exercise 6"
+            href: "In-class_EX/In-class_EX06/In-class_EX06.html" 
+          - text: "In-class Exercise 7"
+            href: "In-class_EX/In-class_EX07/In-class_EX07.html" 
+          - text: "In-class Exercise 8"
+            href: "In-class_EX/In-class_EX08/In-class_EX08.html"
+          - text: "In-class Exercise 9"
+            href: "In-class_EX/In-class_EX09/In-class_EX09.html"
+          - text: "In-class Exercise 10"
+            href: "In-class_EX/In-class_EX10/In-class_EX10.html"
+            
+      - text: "Take-home Exercise" 
+        menu:
+          - text: "Take home exercise 1"
+            href: "Take_home_Ex/Take_home_Ex01/Take_home_Ex01.html"
+          - text: "Take home exercise 2"
+            href: "Take_home_Ex/Take_home_Ex02/Take_home_Ex02.html"
+          - text: "Take home exercise 3"
+            href: "Take_home_Ex/Take_home_Ex03/Take_home_Ex03.html"
+            
+    right:
+      - href: index.qmd
+        text: Home
+      - about.qmd
+
+format: 
+  html:
+    theme: yeti
+    css: styles.css
+    toc: true
+
+editor: visual
