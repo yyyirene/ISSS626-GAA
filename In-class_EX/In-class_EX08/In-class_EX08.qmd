@@ -16,7 +16,7 @@ execute:
 pacman::p_load(tidyverse, sf, httr, jsonlite, rvest,knitr)
 ```
 
-## Preparing Data
+### Preparing Data
 
 ```{r}
 resale <- read_csv("data/rawdata/resale.csv") %>%
@@ -41,9 +41,10 @@ resale_selected <- resale_tidy %>%
 add_list <- sort(unique(resale_selected$address))   #just a list only have the address 
 ```
 
-## Get the coords
+### Get the coords
 
 ```{r}
+#| eval: false
 get_coords <- function(add_list){
   
   # Create a data frame to store all retrieved coordinates
@@ -114,6 +115,7 @@ get_coords <- function(add_list){
 ```
 
 ```{r}
+#| eval: false
 coords <- get_coords(add_list)  # GS 84 # postal code is chr
 ```
 
