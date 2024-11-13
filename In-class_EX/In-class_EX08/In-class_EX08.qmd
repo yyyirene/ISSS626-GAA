@@ -127,6 +127,7 @@ coords <- readRDS("data/rds/coords.rds")
 ```
 
 ### Multicollinearity check with VIF
+
 ```{r}
 #| eval: false
 vif <- performance::check_collinearity(price_mlr)
